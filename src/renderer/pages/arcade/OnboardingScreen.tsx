@@ -131,14 +131,19 @@ export default function OnboardingScreen({
   coworker,
   onComplete,
   onBack,
+  startInGuestMode = false,
 }: {
   /** Cartridge chosen on the select screen; persisted with the settings. */
   coworker: { id: string; label: string; sprite: SpriteName };
   onComplete: () => void;
   /** Optional — returns to the coworker-select screen. */
   onBack?: () => void;
+  /** Web deployment: skip Stage 1 (MindsHub) and start directly in
+      GUEST MODE (bring-my-own-LLM-key). Desktop/Electron keeps the
+      MindsHub-first flow. */
+  startInGuestMode?: boolean;
 }) {
-  const [provider, setProvider] = useState<Provider>('minds');
+  const [provider, setProvider] = useState<Provider>(startInGuestMode ? 'byok' : 'minds');
   const [byokProvider, setByokProvider] = useState<ByokProvider>('anthropic');
   const [selectedModel, setSelectedModel] = useState(ANTHROPIC_MODELS[0].id);
   const [customModel, setCustomModel] = useState('');
@@ -146,13 +151,13 @@ export default function OnboardingScreen({
   const [llmApiKey, setLlmApiKey] = useState('');
   const [mindsUrl] = useState(MINDS_API_BASE);
   const [customBaseUrl, setCustomBaseUrl] = useState('');
-  const [phase, setPhase] = useState<Phase>('choose');
+  const [phase, setPhase] = useState<Phase>(startInGuestMode ? 'minds-no-llm' : 'choose');
   const [errorMsg, setErrorMsg] = useState('');
-  const [skippedMinds, setSkippedMinds] = useState(false);
+  const [skippedMinds, setSkippedMinds] = useState(startInGuestMode);
   // Which stage's layout to render. Decoupled from `phase` so the
   // validating spinner shows in the right place without inferring it
   // from whether the API-key field happens to be non-empty.
-  const [step, setStep] = useState<'minds' | 'byok'>('minds');
+  const [step, setStep] = useState<'minds' | 'byok'>(startInGuestMode ? 'byok' : 'minds');
   // Latches once onboarding finalizes so the web Keycloak auto-finalize
   // effect (which re-runs on `provider` toggles) can't double-save /
   // double-fire onComplete.

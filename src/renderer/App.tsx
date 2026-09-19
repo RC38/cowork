@@ -3,7 +3,7 @@ import TitleScreen from './pages/arcade/TitleScreen';
 import TermsScreen from './pages/arcade/TermsScreen';
 import SetupScreen from './pages/arcade/SetupScreen';
 import CoworkerSelect, { COWORKERS } from './pages/arcade/CoworkerSelect';
-import ThemeSelect, { type ThemePreset } from './pages/arcade/ThemeSelect';
+import ThemeSelect, { THEME_PRESETS, type ThemePreset } from './pages/arcade/ThemeSelect';
 import OnboardingScreen from './pages/arcade/OnboardingScreen';
 import LaunchScreen from './pages/arcade/LaunchScreen';
 import CoworkApp from './CoworkApp';
@@ -57,6 +57,29 @@ function recallCoworker(): { id: string; label: string; sprite: SpriteName } {
     : { id: 'anton', label: 'ANTON', sprite: 'anton' };
 }
 
+// Web 部署跳過 CHOOSE YOUR DISPLAY 時套用的預設主題：DAYLIGHT（標準淺色）。
+const DEFAULT_WEB_THEME_ID = 'daylight';
+function defaultWebThemePreset(): ThemePreset {
+  return THEME_PRESETS.find((p) => p.id === DEFAULT_WEB_THEME_ID) ?? THEME_PRESETS[0];
+}
+
+// CHOOSE YOUR DISPLAY → persist both axes. CoworkApp seeds its
+// theme/skin state from these keys when it mounts after onboarding;
+// the body attributes are set too so the launch beat is consistent.
+function applyThemePreset(preset: ThemePreset): void {
+  persistSkin(preset.skin);
+  try { window.localStorage.setItem('anton.theme', preset.theme); } catch {}
+  document.body.dataset.skin = preset.skin;
+  document.body.dataset.theme = preset.theme;
+  document.body.classList.remove('gf-theme-dark', 'gf-theme-light');
+  document.body.classList.add(preset.theme === 'light' ? 'gf-theme-light' : 'gf-theme-dark');
+  // Re-theme the REMAINING onboarding screens (POWER UP, NOW LOADING)
+  // to the chosen preset — arcade.css carries a palette block per
+  // preset id. ThemeSelect clears this on mount so back-nav returns
+  // to the neutral CRT chooser.
+  document.body.dataset.arcadePreset = preset.id;
+}
+
 // 從風控治理平台（Open WebUI「風控小幫手」）跳入時，連結會帶 ?from=risk-platform。
 // 本部署為內部風控知識庫助理：此參數代表使用者已透過平台入口進入，視為默示同意——
 // 首次訪客自動寫入條款同意旗標並直接進主畫面（terminal），略過 intro/terms/launching 等過場。
@@ -95,23 +118,29 @@ export default function App() {
     if (forced) { setPage(forced); return; }
 
     async function init() {
-      try {
-        // 風控治理平台入口：默示同意，直接寫入本機旗標（之後即使直接開 15173 也不再出現條款頁）。
-        if (isRiskPlatformEntry()) rememberTermsConsent();
+      // Web 部署（內部風控知識庫助理）視為默示同意：首次進入直接跳過
+      // intro（COWORK 標題畫面）/terms，並寫入本機旗標讓之後的載入更快。
+      // Desktop/Electron 仍保留原本的條款同意流程。
+      // 風控治理平台入口同樣是默示同意。
+      // 注意：必須在 readSettings() 之前寫入——容器化 dev 環境下該呼叫會 403，
+      // 若旗標來不及寫入，外層 catch 會把人退回條款頁（每次重新整理都出現）。
+      const webImplicitConsent = isWeb;
+      if (webImplicitConsent || isRiskPlatformEntry()) rememberTermsConsent();
 
-        const settings = await host.readSettings();
+      try {
+        let serverConsented = false;
+        try {
+          // /settings/raw 有 LoopbackDesktopOnly guard：容器化 dev 環境下 vite proxy
+          // → api 是非 loopback peer，一律 403 "local requests only"。web 的同意是
+          // 默示的（上方 webImplicitConsent），這裡失敗只代表「沒有 server-side flag」；
+          // desktop 走 Electron bridge 不會 403，失敗時由外層 catch 處理。
+          const settings = await host.readSettings();
+          serverConsented = settings.ANTON_TERMS_CONSENT === 'true';
+        } catch { /* non-fatal: see above */ }
+
         // Consent counts if either the server-side flag is set (desktop /
         // onboarding path) or this browser already accepted (web path).
-        // Web 部署（內部風控知識庫助理）視為默示同意：首次進入直接跳過
-        // intro（COWORK 標題畫面）/terms，並寫入本機旗標讓之後的載入更快。
-        // Desktop/Electron 仍保留原本的條款同意流程。
-        const webImplicitConsent = isWeb;
-        if (webImplicitConsent) rememberTermsConsent();
-        const consented =
-          webImplicitConsent ||
-          isRiskPlatformEntry() ||
-          settings.ANTON_TERMS_CONSENT === 'true' ||
-          hasLocalTermsConsent();
+        const consented = webImplicitConsent || serverConsented || hasLocalTermsConsent();
         if (!consented) {
           // Terms gate the rest of the app — every launch up until the
           // user accepts shows the title screen, then terms. Once
@@ -133,6 +162,17 @@ export default function App() {
         }
         const { configured } = await host.checkConfigured();
         if (!configured) {
+          // Web 部署：跳過 SELECT YOUR COWORKER（預設 ANTON）、CHOOSE YOUR DISPLAY（預設 DAYLIGHT），
+          // 並再跳過 POWER UP（onboarding）——直接進主畫面，由使用者之後在 Settings → Providers
+          // 自行配置 LLM key（未配置時 CoworkApp 會顯示提示，不會鎖死）。
+          // Desktop/Electron 保留原本的 cartridge / 主題選擇 / onboarding 流程。
+          if (webImplicitConsent) {
+            rememberCoworker('anton');
+            setCoworker({ id: 'anton', label: 'ANTON', sprite: 'anton' });
+            applyThemePreset(defaultWebThemePreset());
+            setPage('terminal');
+            return;
+          }
           setPage('coworker');
           return;
         }
@@ -198,21 +238,8 @@ export default function App() {
     setPage('theme');
   };
 
-  // CHOOSE YOUR DISPLAY → persist both axes. CoworkApp seeds its
-  // theme/skin state from these keys when it mounts after onboarding;
-  // the body attributes are set too so the launch beat is consistent.
   const handleThemeSelected = (preset: ThemePreset) => {
-    persistSkin(preset.skin);
-    try { window.localStorage.setItem('anton.theme', preset.theme); } catch {}
-    document.body.dataset.skin = preset.skin;
-    document.body.dataset.theme = preset.theme;
-    document.body.classList.remove('gf-theme-dark', 'gf-theme-light');
-    document.body.classList.add(preset.theme === 'light' ? 'gf-theme-light' : 'gf-theme-dark');
-    // Re-theme the REMAINING onboarding screens (POWER UP, NOW LOADING)
-    // to the chosen preset — arcade.css carries a palette block per
-    // preset id. ThemeSelect clears this on mount so back-nav returns
-    // to the neutral CRT chooser.
-    document.body.dataset.arcadePreset = preset.id;
+    applyThemePreset(preset);
     setPage('onboarding');
   };
 
@@ -256,6 +283,9 @@ export default function App() {
           coworker={coworker}
           onComplete={isDevFrozen ? () => {} : handleOnboardingComplete}
           onBack={() => setPage('theme')}
+          // Web 部署：POWER UP 預設走 GUEST MODE（bring my own LLM key），
+          // 跳過 Stage 1 的 MindsHub API Key。Desktop/Electron 保留原流程。
+          startInGuestMode={isWeb}
         />
       )}
       {page === 'launching' && (
