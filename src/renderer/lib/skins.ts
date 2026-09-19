@@ -24,11 +24,11 @@ export interface Skin {
 }
 
 export const SKINS: Skin[] = [
-  { id: 'normal', label: 'Normal', title: 'Use the standard look.' },
-  { id: '8bit', label: '8-Bit', icon: 'gamepad', title: 'Use the retro 8-Bit look.' },
+  { id: 'normal', label: '標準', title: '使用標準外觀。' },
+  { id: '8bit', label: '8-Bit', icon: 'gamepad', title: '使用復古 8-Bit 外觀。' },
   // "Design your own" — token recipe edited in Settings → Appearance,
   // applied as inline body properties (see lib/customTheme.ts).
-  { id: 'custom', label: 'Custom', icon: 'palette', title: 'Design your own look.' },
+  { id: 'custom', label: '自訂', icon: 'palette', title: '設計您自己的外觀。' },
 ];
 
 export const DEFAULT_SKIN = SKINS[0].id;

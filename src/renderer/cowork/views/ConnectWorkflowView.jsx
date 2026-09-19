@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Ico from '../components/Icons';
 import {
   fetchIntegrations,
@@ -654,6 +655,7 @@ function ConnectorsPage({
 }
 
 function DirectoryModal({ mode, onChangeMode, onClose, onChooseConnector }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   // Filter (category) + sort selections live here. Both default to
   // the inclusive option ("All categories", "Popular") so a fresh
@@ -739,7 +741,7 @@ function DirectoryModal({ mode, onChangeMode, onClose, onChooseConnector }) {
             {Ico.search(16)}
             <input
               type="text"
-              placeholder={mode === DIRECTORY_MODE_PLUGINS ? 'Search plugins...' : 'Search connectors...'}
+              placeholder={mode === DIRECTORY_MODE_PLUGINS ? 'Search plugins...' : t('connect.searchPlaceholder')}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -781,7 +783,7 @@ function DirectoryModal({ mode, onChangeMode, onClose, onChooseConnector }) {
               </label>
             )}
             <label className="customize-select" style={{ position: 'relative' }}>
-              <span style={{ color: 'var(--ink-4)', marginRight: 6 }}>Sort by</span>
+              <span style={{ color: 'var(--ink-4)', marginRight: 6 }}>{t('connect.sortBy')}</span>
               <span>
                 {DIRECTORY_SORT_OPTIONS.find((s) => s.id === sortBy)?.label || 'Popular'}
               </span>
@@ -789,7 +791,7 @@ function DirectoryModal({ mode, onChangeMode, onClose, onChooseConnector }) {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                aria-label="Sort by"
+                aria-label={t('connect.sortBy')}
                 style={{
                   position: 'absolute', inset: 0,
                   opacity: 0, cursor: 'pointer',

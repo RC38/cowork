@@ -26,6 +26,7 @@ const FONT_MONO    = "var(--font-mono)";
 // ─── Header ──────────────────────────────────────────────────────────────
 
 function ConnectButton({ onClick, large = false }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -33,7 +34,7 @@ function ConnectButton({ onClick, large = false }) {
       onClick={onClick}
       style={large ? { fontSize: 13.5 } : undefined}
     >
-      {Ico.plus(14)} Connect
+      {Ico.plus(14)} {t('connect.connectBtn')}
     </button>
   );
 }
@@ -62,6 +63,7 @@ function ConnectionsCounts({ search, total, filtered }) {
 // Only rendered when there's at least one existing connection — the
 // EmptyState already covers the zero-connection case.
 function NewConnectionCard({ onClick }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(false);
   return (
     <button
@@ -83,7 +85,7 @@ function NewConnectionCard({ onClick }) {
     >
       <span style={{ display: 'inline-flex' }}>{Ico.plus(16)}</span>
       <span style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500 }}>
-        New connection
+        {t('connect.newConnection', 'New connection')}
       </span>
     </button>
   );
@@ -199,7 +201,10 @@ function ConnectionCard({ connection, onDelete, onModify }) {
 
 // ─── Empty state ─────────────────────────────────────────────────────────
 
-function EmptyState({ onConnectNew, agentLabel = 'the agent' }) {
+import { useTranslation } from 'react-i18next';
+
+function EmptyState({ onConnectNew, agentLabel = 'VeriAgent' }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       flex: 1, minHeight: 360,
@@ -208,14 +213,13 @@ function EmptyState({ onConnectNew, agentLabel = 'the agent' }) {
     }}>
       <span style={{ display: 'inline-flex', color: 'var(--ink-4)' }}>{Ico.link(32)}</span>
       <div style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>
-        No apps connected yet
+        {t('connect.noApps')}
       </div>
       <div style={{
         fontFamily: FONT_BODY, fontSize: 13.5, color: 'var(--ink-3)',
         maxWidth: 380, textAlign: 'center', lineHeight: 1.5,
       }}>
-        Connectors shape how {agentLabel} works with you. Hook up the apps and
-        databases you already use, and {agentLabel} will automate work there.
+        {t('connect.emptyDescription', { agent: agentLabel })}
       </div>
       <ConnectButton onClick={onConnectNew} large />
     </div>
@@ -638,6 +642,8 @@ export default function CustomizeView({
     return <ConnectWorkflowView onClose={handleWorkflowClose} />;
   }
 
+  const { t } = useTranslation();
+
   return (
     // Background intentionally omitted so the gravity-field canvas
     // painted behind the React root shows through.
@@ -646,8 +652,8 @@ export default function CustomizeView({
       display: 'flex', flexDirection: 'column',
     }}>
       <PageHeader
-        title="Connect Apps and Data"
-        subtitle={`Connect ${agentLabel} to the tools you already use, and automate work there.`}
+        title={t('connect.title')}
+        subtitle={t('connect.subtitle', { agent: agentLabel || 'VeriAgent' })}
         actions={<ConnectButton onClick={handleConnectNew} />}
       />
 

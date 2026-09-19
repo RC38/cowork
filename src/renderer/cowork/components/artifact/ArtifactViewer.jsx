@@ -805,42 +805,6 @@ export function ArtifactViewer({ open, artifact, onClose, onChange, onDelete, on
               </span>
             </button>
           )}
-          {publishedUrl ? (
-            <button
-              type="button"
-              onClick={onUnpublish}
-              disabled={busy || !hasActionPath}
-              title={hasActionPath ? 'Unpublish' : disabledReason || 'No local artifact path'}
-              style={{
-                cursor: busy ? 'progress' : hasActionPath ? 'pointer' : 'not-allowed',
-                background: 'transparent',
-                border: '1px solid var(--line)',
-                color: 'var(--ink-2)',
-                padding: '6px 12px', borderRadius: 8,
-                fontSize: 12.5, fontWeight: 500,
-                opacity: busy || !hasActionPath ? 0.6 : 1,
-              }}
-            >
-              Unpublish
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onPublish}
-              disabled={busy || !hasActionPath}
-              title={hasActionPath ? 'Publish' : disabledReason || 'No local artifact path'}
-              style={{
-                cursor: busy ? 'progress' : hasActionPath ? 'pointer' : 'not-allowed',
-                background: 'var(--accent)', border: '1px solid var(--accent)',
-                color: '#fff',
-                padding: '6px 12px', borderRadius: 8,
-                fontSize: 12.5, fontWeight: 600,
-                opacity: busy || !hasActionPath ? 0.7 : 1,
-              }}
-            >
-              {busy ? 'Publishing…' : 'Publish'}
-            </button>
-          )}
           {artifact?.serveUrl && (
             <button
               type="button"
@@ -920,12 +884,6 @@ export function ArtifactViewer({ open, artifact, onClose, onChange, onDelete, on
               icon: Ico.download(13),
               onClick: onDownload,
             }] : []),
-            {
-              label: publishedUrl ? 'Unpublish' : 'Publish',
-              icon: Ico.upload(13),
-              disabled: busy || !hasActionPath,
-              onClick: publishedUrl ? onUnpublish : onPublish,
-            },
             { divider: true },
             {
               label: 'Delete',

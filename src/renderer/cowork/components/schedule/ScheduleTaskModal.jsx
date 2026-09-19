@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
 import Ico from '../Icons';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY = 'var(--font-body)';
 
@@ -69,6 +70,7 @@ export default function ScheduleTaskModal({
   busy = false,
   agentLabel,
 }) {
+  const { t } = useTranslation();
   const isEdit = !!task;
 
   const [form, setForm] = useState(() => emptyForm({ defaultProjectPath, defaultModelId }));
@@ -112,7 +114,7 @@ export default function ScheduleTaskModal({
 
   async function handleSubmit() {
     if (!form.prompt.trim()) {
-      setError('A prompt is required.');
+      setError(t('scheduled.modal.promptRequired'));
       return;
     }
     setError('');
@@ -167,39 +169,39 @@ export default function ScheduleTaskModal({
     >
       <ModalHeader
         id="schedule-modal-title"
-        title={isEdit ? 'Edit scheduled task' : 'Schedule a task'}
+        title={isEdit ? t('scheduled.modal.titleEdit', 'Edit scheduled task') : t('scheduled.modal.title')}
         subtitle={isEdit
-          ? `Update the cadence or prompt. ${agentLabel} picks up changes on the next run.`
-          : `${agentLabel} runs this prompt on the cadence you set, while the desktop app is open.`}
+          ? t('scheduled.modal.subtitleEdit', `Update the cadence or prompt. {{agent}} picks up changes on the next run.`, { agent: agentLabel || 'VeriAgent' })
+          : t('scheduled.modal.subtitleCreate', `{{agent}} runs this prompt on the cadence you set, while the desktop app is open.`, { agent: agentLabel || 'VeriAgent' })}
         onClose={onClose}
       />
       <ModalBody padding="18px 20px">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="Title">
+          <Field label={t('scheduled.modal.titleField')}>
             <input
               type="text"
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
-              placeholder="Weekly metrics summary"
+              placeholder={t('scheduled.modal.titlePlaceholder')}
               autoFocus
               style={fieldInput}
             />
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <Field label="Cadence">
+            <Field label={t('scheduled.modal.cadence')}>
               <select
                 value={form.cadence}
                 onChange={(e) => update('cadence', e.target.value)}
                 style={fieldSelect}
               >
-                <option value="once">Once</option>
-                <option value="hourly">Hourly</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
+                <option value="once">{t('scheduled.modal.once')}</option>
+                <option value="hourly">{t('scheduled.modal.hourly')}</option>
+                <option value="daily">{t('scheduled.modal.daily')}</option>
+                <option value="weekly">{t('scheduled.modal.weekly')}</option>
               </select>
             </Field>
-            <Field label="Next run">
+            <Field label={t('scheduled.modal.nextRun')}>
               <input
                 type="datetime-local"
                 value={form.nextRunAt}
@@ -209,24 +211,24 @@ export default function ScheduleTaskModal({
             </Field>
           </div>
 
-          <Field label="Project">
+          <Field label={t('scheduled.modal.project')}>
             <select
               value={form.projectPath}
               onChange={(e) => update('projectPath', e.target.value)}
               style={fieldSelect}
             >
-              <option value="">No project</option>
+              <option value="">{t('scheduled.modal.noProject')}</option>
               {projects.map((p) => (
                 <option key={p.path} value={p.path}>{p.name}</option>
               ))}
             </select>
           </Field>
 
-          <Field label="Prompt">
+          <Field label={t('scheduled.modal.prompt')}>
             <textarea
               value={form.prompt}
               onChange={(e) => update('prompt', e.target.value)}
-              placeholder={`Ask ${agentLabel} to…`}
+              placeholder={t('scheduled.modal.promptPlaceholder', { agent: agentLabel || 'VeriAgent' })}
               rows={6}
               style={{ ...fieldInput, resize: 'vertical', lineHeight: 1.45 }}
             />
@@ -246,19 +248,19 @@ export default function ScheduleTaskModal({
         {isEdit && onDelete && (
           confirmingDelete ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>Delete this schedule?</span>
+              <span style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>{t('scheduled.modal.confirmDelete', 'Delete this schedule?')}</span>
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
                 disabled={busy}
                 style={btnSecondary}
-              >Cancel</button>
+              >{t('scheduled.modal.cancel')}</button>
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={busy}
                 style={btnDanger}
-              >Delete</button>
+              >{t('scheduled.modal.delete', 'Delete')}</button>
             </div>
           ) : (
             <button
@@ -268,14 +270,14 @@ export default function ScheduleTaskModal({
               style={{ ...btnSecondary, color: 'var(--danger)' }}
             >
               {Ico.trash ? Ico.trash(13) : null}
-              <span style={{ marginLeft: Ico.trash ? 6 : 0 }}>Delete</span>
+              <span style={{ marginLeft: Ico.trash ? 6 : 0 }}>{t('scheduled.modal.delete', 'Delete')}</span>
             </button>
           )
         )}
         {!isEdit && <span />}
         <div style={{ display: 'inline-flex', gap: 8 }}>
           <button type="button" onClick={onClose} disabled={busy} style={btnSecondary}>
-            Cancel
+            {t('scheduled.modal.cancel')}
           </button>
           <button
             type="button"
@@ -283,7 +285,7 @@ export default function ScheduleTaskModal({
             disabled={busy}
             className="btn-primary"
           >
-            {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Create')}
+            {busy ? t('scheduled.modal.saving') : (isEdit ? t('scheduled.modal.saveChanges', 'Save changes') : t('scheduled.modal.create'))}
           </button>
         </div>
       </ModalFooter>

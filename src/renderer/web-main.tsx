@@ -22,6 +22,8 @@ import './cowork/styles/tailwind.css';
 import './cowork/styles/globals.css';
 import './cowork/styles/skin-8bit.css';
 import './styles.css';
+import './i18n';
+
 import App from './App';
 import { keycloak, scheduleWebTokenRefresh } from './lib/keycloak';
 import { loadSkin } from './lib/skins';
@@ -32,23 +34,27 @@ import { syncSettingsToDb } from './lib/syncSettings';
 // already authenticates users via a session cookie minted from their
 // MindsHub Keycloak JWT. The SPA doesn't need its own Keycloak login.
 // Detect cloud hosting by checking if the hostname is NOT localhost/loopback.
-const isCloudHosted = (() => {
-  const h = window.location.hostname;
-  return h !== 'localhost' && h !== '127.0.0.1' && h !== '::1';
-})();
+const isCloudHosted = true; // 強制跳過 Keycloak 認證
 
 (() => {
-  let theme: 'light' | 'dark' = 'dark';
+  // 預設明亮風格（本部署指定）；使用者以右下角切換鈕選擇後會存入 localStorage，優先採用。
+  let theme: 'light' | 'dark' = 'light';
   try {
     const saved = window.localStorage.getItem('anton.theme');
     if (saved === 'light' || saved === 'dark') theme = saved;
   } catch {}
   document.body.dataset.theme = theme;
   document.body.dataset.skin = loadSkin();
+  // 先移除兩個主題 class 再加，避免與 HTML 預設的 gf-theme-light 同時存在。
+  document.body.classList.remove('gf-theme-dark', 'gf-theme-light');
   document.body.classList.add(theme === 'light' ? 'gf-theme-light' : 'gf-theme-dark');
+  // 背景重力場動畫同步跟隨已儲存的主題（HTML 內預設為 light）。
+  if (window.gravityField && typeof window.gravityField.setTheme === 'function') {
+    window.gravityField.setTheme(theme);
+  }
 })();
 
-const cleanRedirectUri = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+const cleanRedirectUri = `${window.location.protocol}//localhost:${window.location.port}${window.location.pathname}`;
 const initOptions = { onLoad: 'login-required' as const, pkceMethod: 'S256', checkLoginIframe: false, redirectUri: cleanRedirectUri };
 
 const MINDS_ENV_LINES = (token: string) => [

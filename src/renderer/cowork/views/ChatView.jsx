@@ -10,6 +10,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import Ico from '../components/Icons';
 import Composer from '../components/Composer';
 import { OrbitMorph } from '../components/ui';
@@ -60,11 +61,12 @@ function formatTime(value) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function dividerLabel(date = new Date()) {
+function dividerLabel(date = new Date(), t) {
   const today = new Date();
   const sameDay = date.toDateString() === today.toDateString();
+  const todayLabel = t ? t('chat.today') : 'Today';
   const month = date.toLocaleString('en-US', { month: 'short' });
-  return `${sameDay ? 'Today' : date.toLocaleString('en-US', { weekday: 'short' })} · ${month} ${date.getDate()}`;
+  return `${sameDay ? todayLabel : date.toLocaleString('en-US', { weekday: 'short' })} · ${month} ${date.getDate()}`;
 }
 
 function Divider({ label }) {
@@ -807,6 +809,7 @@ export default function ChatView({
   onRemoveFromQueue,
   agentLabel,
 }) {
+  const { t } = useTranslation();
   const scrollRef = useRef(null);
   const { isNarrow } = useBreakpoint();
   // Wide: inline grid column. Narrow: fixed overlay from the right.
@@ -1095,9 +1098,9 @@ export default function ChatView({
               return (
                 <>
                   <CrumbButton
-                    label="Projects"
+                    label={t('chat.projectsCrumb')}
                     onClick={() => onOpenProjectsList?.()}
-                    title="All projects"
+                    title={t('chat.allProjects')}
                   />
                   {project?.name && (
                     <>
@@ -1105,7 +1108,7 @@ export default function ChatView({
                       <CrumbButton
                         label={project.name}
                         onClick={() => onOpenProject?.(project)}
-                        title={`Open project: ${project.name}`}
+                        title={t('chat.openProject', { name: project.name })}
                         maxWidth={200}
                       />
                     </>
@@ -1288,7 +1291,7 @@ export default function ChatView({
             maxWidth: 720, margin: '0 auto',
             display: 'flex', flexDirection: 'column', gap: 28,
           }}>
-            <Divider label={dividerLabel(new Date())} />
+            <Divider label={dividerLabel(new Date(), t)} />
 
             {(() => {
               // Track the assistant turn index inline so MessageActions
@@ -1677,7 +1680,7 @@ export default function ChatView({
             disabledConnections={disabledConnections ?? task.disabledConnections ?? []}
             onUpdateConnectorMute={onUpdateConnectorMute}
             onRemoveAttachment={onRemoveAttachment}
-            placeholder="Reply…"
+            placeholder={t('chat.replyPlaceholder')}
             metaReadOnly
             hideMeta
             streaming={isStreaming}

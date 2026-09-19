@@ -12,7 +12,7 @@ import './cowork/styles/tailwind.css';
 import './cowork/styles/globals.css';
 import './cowork/styles/skin-8bit.css';
 import './styles.css';
-import { loadSkin } from './lib/skins';
+import './i18n';
 
 // Electron-only entry. The bridge is exposed by preload.ts before this
 // runs, so a missing `window.antontron` means we're loaded in a real
@@ -50,13 +50,16 @@ if (typeof window !== 'undefined' && !(window as any).antontron) {
   // Apply the persisted theme + skin on first paint (before React
   // mounts) so onboarding doesn't flash the wrong palette.
   (() => {
-    let theme: 'light' | 'dark' = 'dark';
+    // 預設明亮風格（本部署指定）；localStorage 中使用者選過的主題優先。
+    let theme: 'light' | 'dark' = 'light';
     try {
       const saved = window.localStorage.getItem('anton.theme');
       if (saved === 'light' || saved === 'dark') theme = saved;
     } catch {}
     document.body.dataset.theme = theme;
     document.body.dataset.skin = loadSkin();
+    // 先移除兩個主題 class 再加，避免與 HTML 預設的 gf-theme-light 同時存在。
+    document.body.classList.remove('gf-theme-dark', 'gf-theme-light');
     document.body.classList.add(theme === 'light' ? 'gf-theme-light' : 'gf-theme-dark');
   })();
 

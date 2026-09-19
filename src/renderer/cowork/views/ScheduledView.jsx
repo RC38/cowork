@@ -19,6 +19,7 @@ import {
 } from '../components/collection';
 import ScheduleTaskModal from '../components/schedule/ScheduleTaskModal';
 import ScheduleCard from '../components/schedule/ScheduleCard';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY = 'var(--font-body)';
 
@@ -62,8 +63,9 @@ export default function ScheduledView({
   // "project:" label is clicked. Wired by App.jsx to setSelected
   // Project + setRoute('projects'), the same path Live artifacts uses.
   onOpenProject,
-  agentLabel,
+  agentLabel = 'VeriAgent',
 }) {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -140,14 +142,25 @@ export default function ScheduledView({
     finally     { setBusyId(null); }
   }
 
+  const sortOptions = [
+    { id: 'next',    label: t('scheduled.sortNext') },
+    { id: 'name',    label: t('scheduled.sortName') },
+    { id: 'created', label: t('scheduled.sortCreated') },
+  ];
+
+  const viewOptions = [
+    { id: 'grid', label: t('projects.viewGrid'), icon: (n) => Ico.grid(n) },
+    { id: 'list', label: t('projects.viewList'), icon: (n) => Ico.list(n) },
+  ];
+
   return (
     <div className="scroll-clean" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
-        title="Scheduled Tasks"
-        subtitle={`Local scheduled ${agentLabel} tasks run while MindsHub Cowork is open. Runs that slip while the app is closed are skipped — ${agentLabel} resumes from the next scheduled occurrence.`}
+        title={t('sidebar.scheduledTasks')}
+        subtitle={t('scheduled.subtitle', { agent: agentLabel || 'VeriAgent' })}
         actions={
           <button className="btn-primary" onClick={openCreate}>
-            {Ico.plus(14)} Schedule task
+            {Ico.plus(14)} {t('scheduled.scheduleTask')}
           </button>
         }
       />
@@ -161,21 +174,21 @@ export default function ScheduledView({
               value={search}
               onChange={setSearch}
               inputRef={searchRef}
-              placeholder="Search scheduled tasks"
+              placeholder={t('scheduled.searchPlaceholder')}
             />
           }
-          sort={<SortPill value={sort} onChange={setSort} options={SORT_OPTIONS} />}
-          view={<ViewToggle value={viewMode} onChange={setViewMode} />}
+          sort={<SortPill value={sort} onChange={setSort} options={sortOptions} label={t('scheduled.sort')} />}
+          view={<ViewToggle value={viewMode} onChange={setViewMode} options={viewOptions} />}
           counts={
             <>
               {(search || '').trim().length > 0
-                ? `Showing ${visible.length} of ${scheduled.length}`
-                : `${scheduled.length} scheduled ${scheduled.length === 1 ? 'task' : 'tasks'}`}
+                ? t('scheduled.showingOf', { total: scheduled.length, filtered: visible.length })
+                : t('scheduled.count', { count: scheduled.length })}
               {totalMissed > 0 && (
                 <>
                   {' · '}
                   <span style={{ color: 'var(--ink-3)' }}>
-                    {totalMissed} missed run{totalMissed === 1 ? '' : 's'}
+                    {t('scheduled.missedRuns', { count: totalMissed })}
                   </span>
                 </>
               )}
@@ -283,6 +296,7 @@ const FONT_MONO    = 'var(--font-mono)';
 const LIST_GRID = '24px minmax(0, 2.2fr) 90px minmax(0, 1.1fr) 130px 110px 190px';
 
 function ListHeaderRow() {
+  const { t } = useTranslation();
   const Cell = ({ children, align }) => (
     <div style={{
       fontFamily: FONT_MONO, fontSize: 10.5,
@@ -298,11 +312,11 @@ function ListHeaderRow() {
       borderBottom: '1px solid var(--line)',
     }}>
       <Cell />
-      <Cell>Title</Cell>
-      <Cell>Cadence</Cell>
-      <Cell>Project</Cell>
-      <Cell>Next run</Cell>
-      <Cell>Last run</Cell>
+      <Cell>{t('scheduled.titleCol')}</Cell>
+      <Cell>{t('scheduled.cadenceCol')}</Cell>
+      <Cell>{t('scheduled.projectCol')}</Cell>
+      <Cell>{t('scheduled.nextRunCol')}</Cell>
+      <Cell>{t('scheduled.lastRunCol')}</Cell>
       <Cell />
     </div>
   );
@@ -508,6 +522,7 @@ function RowAction({ icon, label, onClick, busy }) {
 // ── Empty state ──
 
 function EmptyState({ onCreate, agentLabel }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       margin: '40px 28px',
@@ -529,19 +544,19 @@ function EmptyState({ onCreate, agentLabel }) {
       <div style={{
         fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600,
         color: 'var(--ink)',
-      }}>No scheduled tasks yet</div>
+      }}>{t('scheduled.noTasks')}</div>
       <div style={{
         fontFamily: FONT_BODY, fontSize: 13, color: 'var(--ink-3)',
         maxWidth: 360, lineHeight: 1.5,
       }}>
-        {`Create a recurring ${agentLabel} task — a Monday digest, an hourly log sweep, a daily KPI snapshot. ${agentLabel} runs them while the desktop app is open.`}
+        {t('scheduled.emptyDescription', { agent: agentLabel || 'VeriAgent' })}
       </div>
       <button
         className="btn-primary"
         onClick={onCreate}
         style={{ marginTop: 4 }}
       >
-        {Ico.plus(14)} Schedule your first task
+        {Ico.plus(14)} {t('scheduled.scheduleFirstTask')}
       </button>
     </div>
   );

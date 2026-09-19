@@ -29,10 +29,16 @@ const IS_WEB = process.env.BUILD_TARGET === 'web';
 // entry so `http://localhost:5173/` is the canonical URL.
 const webRootRewrite = {
   name: 'cowork-web-root-rewrite',
+  enforce: 'pre' as const,
   configureServer(server: any) {
     server.middlewares.use((req: any, _res: any, next: any) => {
-      if (req.url === '/' || req.url === '') {
-        req.url = '/index-web.html';
+      // req.url 可能帶 query string（如 /?from=risk-platform），需先拆出 pathname 再比對，
+      // 並將原 query 保留到重寫後的網址，否則带參跳轉會落到 Electron 入口 (index.html)。
+      const qIdx = String(req.url ?? '').indexOf('?');
+      const pathname = qIdx === -1 ? req.url : req.url!.slice(0, qIdx);
+      const query = qIdx === -1 ? '' : req.url!.slice(qIdx);
+      if (pathname === '/' || pathname === '') {
+        req.url = `/index-web.html${query}`;
       }
       next();
     });
@@ -64,7 +70,11 @@ export default defineConfig({
     proxy: {
       // Same override the main process honors (server-process.ts), so a
       // dev session can run against a sandboxed backend on another port.
-      '/api': `http://127.0.0.1:${process.env.COWORK_SERVER_PORT || 26866}`,
+      '/api': {
+        target: `http://${process.env.COWORK_SERVER_HOST || '127.0.0.1'}:${process.env.COWORK_SERVER_PORT || 26866}`,
+        autoRewrite: true,
+        hostRewrite: true,
+      },
     },
   },
   resolve: {

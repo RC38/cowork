@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Ico from '../components/Icons';
 import { fetchScheduleRuns } from '../api';
 import ScheduleTaskModal from '../components/schedule/ScheduleTaskModal';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY    = 'var(--font-body)';
 const FONT_DISPLAY = 'var(--font-display)';
@@ -330,6 +331,7 @@ export default function ScheduleDetailView({
   onRunNow,                 // (id)
   agentLabel,
 }) {
+  const { t } = useTranslation();
   const [runs, setRuns] = useState([]);
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -396,7 +398,7 @@ export default function ScheduleDetailView({
         padding: '14px 28px 8px',
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
-        <CrumbButton label="Scheduled Tasks" onClick={onBack} title="All scheduled tasks" />
+        <CrumbButton label={t('sidebar.scheduledTasks')} onClick={onBack} title={t('sidebar.allScheduledTasks')} />
         <CrumbSep />
         <span style={{
           padding: '2px 6px',

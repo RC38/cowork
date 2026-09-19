@@ -21,12 +21,14 @@ import {
   writeProjectFile,
   ANTON_PROJECT_INSTRUCTIONS_PATH,
 } from '../../api';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY    = "var(--font-body, 'Inter', system-ui, sans-serif)";
 const FONT_DISPLAY = "var(--font-display, 'Josefin Sans', system-ui, sans-serif)";
 const FONT_MONO    = "var(--font-mono, 'JetBrains Mono', monospace)";
 
 function FileList({ files, onRemove }) {
+  const { t } = useTranslation();
   if (!files.length) return null;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
@@ -53,8 +55,8 @@ function FileList({ files, onRemove }) {
           <button
             type="button"
             onClick={() => onRemove(i)}
-            title="Remove"
-            aria-label="Remove"
+            title={t('projects.modal.remove')}
+            aria-label={t('projects.modal.remove')}
             style={{
               background: 'transparent', border: 0, padding: 0,
               color: 'var(--ink-4)', cursor: 'pointer',
@@ -71,6 +73,7 @@ function FileList({ files, onRemove }) {
 }
 
 export default function NewProjectModal({ open, onClose, onCreated }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [instructions, setInstructions] = useState('');
   const [files, setFiles] = useState([]);
@@ -129,7 +132,7 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
   const create = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Project name is required.');
+      setError(t('projects.modal.nameRequired'));
       nameRef.current?.focus();
       return;
     }
@@ -168,7 +171,7 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
       onCreated?.(result);
       onClose?.();
     } catch (e) {
-      setError(e?.message || 'Could not create project.');
+      setError(e?.message || t('projects.modal.createFailed'));
     } finally {
       setBusy(false);
     }
@@ -210,12 +213,12 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
             margin: 0,
             fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 600,
             letterSpacing: '-0.005em', color: 'var(--ink)',
-          }}>Start a new project</h2>
+          }}>{t('projects.modal.title')}</h2>
           <button
             type="button"
             onClick={() => !busy && onClose?.()}
             disabled={busy}
-            title="Close"
+            title={t('projects.modal.close')}
             style={{
               cursor: busy ? 'not-allowed' : 'pointer',
               background: 'transparent', border: 0,
@@ -237,13 +240,13 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
             <span style={{
               fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.06em',
               textTransform: 'uppercase', color: 'var(--ink-4)', fontWeight: 600,
-            }}>Project name</span>
+            }}>{t('projects.modal.projectName')}</span>
             <input
               ref={nameRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="acme-engineering"
+              placeholder={t('projects.modal.projectNamePlaceholder')}
               spellCheck={false}
               autoCapitalize="none"
               autoCorrect="off"
@@ -266,11 +269,11 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
             <span style={{
               fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.06em',
               textTransform: 'uppercase', color: 'var(--ink-4)', fontWeight: 600,
-            }}>Instructions <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--ink-4)', fontFamily: FONT_BODY, fontWeight: 400 }}>(optional)</span></span>
+            }}>{t('projects.modal.instructions')} <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--ink-4)', fontFamily: FONT_BODY, fontWeight: 400 }}>{t('projects.modal.optional')}</span></span>
             <textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Tell the agent how to work in this project — codebase conventions, output preferences, things to avoid…"
+              placeholder={t('projects.modal.instructionsPlaceholder')}
               rows={5}
               disabled={busy}
               spellCheck={false}
@@ -288,7 +291,7 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
             <span style={{
               fontFamily: FONT_MONO, fontSize: 10.5, color: 'var(--ink-4)',
             }}>
-              Saved as <code style={{
+              {t('projects.modal.savedAs')} <code style={{
                 fontFamily: FONT_MONO,
                 background: 'var(--surface-2)', padding: '1px 5px', borderRadius: 3,
                 color: 'var(--ink-3)',
@@ -300,7 +303,7 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
             <span style={{
               fontFamily: FONT_MONO, fontSize: 11, letterSpacing: '0.06em',
               textTransform: 'uppercase', color: 'var(--ink-4)', fontWeight: 600,
-            }}>Files <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--ink-4)', fontFamily: FONT_BODY, fontWeight: 400 }}>(optional)</span></span>
+            }}>{t('projects.modal.files')} <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--ink-4)', fontFamily: FONT_BODY, fontWeight: 400 }}>{t('projects.modal.optional')}</span></span>
             <div
               onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
               onDragLeave={() => setDragActive(false)}
@@ -324,10 +327,10 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
                 {Ico.upload?.(20) || Ico.plus(20)}
               </div>
               <div style={{ fontWeight: 500, color: 'var(--ink-2)' }}>
-                Drop files here or <span style={{ color: 'var(--accent)' }}>click to browse</span>
+                {t('projects.modal.dropFiles')} <span style={{ color: 'var(--accent)' }}>{t('projects.modal.clickToBrowse')}</span>
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-4)', marginTop: 4 }}>
-                Reference docs, schemas, examples — anything the agent should know about.
+                {t('projects.modal.filesHint')}
               </div>
             </div>
             <input
@@ -379,7 +382,7 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
               fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500,
               opacity: busy ? 0.5 : 1,
             }}
-          >Cancel</button>
+          >{t('projects.modal.cancel')}</button>
           <button
             type="button"
             className="btn-primary"
@@ -387,7 +390,7 @@ export default function NewProjectModal({ open, onClose, onCreated }) {
             disabled={busy || !name.trim()}
             style={{ letterSpacing: '0.04em' }}
           >
-            {busy ? 'Creating…' : 'CREATE'}
+            {busy ? t('projects.modal.creating') : t('projects.modal.create')}
           </button>
         </div>
       </div>

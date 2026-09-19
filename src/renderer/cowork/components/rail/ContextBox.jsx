@@ -1,6 +1,7 @@
 // Context card — project + global memories. Slim variant by default
 // per spec ("one line header, no underline").
 
+import { useTranslation } from 'react-i18next';
 import { RailCard } from './RailCard';
 import { ContextCard } from './ContextCard';
 
@@ -14,8 +15,9 @@ export function ContextBox({
   maxBodyHeight = 360,
   slim = true,
 }) {
+  const { t } = useTranslation();
   return (
-    <RailCard title="Context" defaultOpen={defaultOpen} slim={slim} maxBodyHeight={maxBodyHeight}>
+    <RailCard title={t('rail.context')} defaultOpen={defaultOpen} slim={slim} maxBodyHeight={maxBodyHeight}>
       <ContextCard project={project} conversationId={conversationId} refreshKey={refreshKey} />
     </RailCard>
   );

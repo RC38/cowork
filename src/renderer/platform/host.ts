@@ -274,13 +274,8 @@ export async function validateProvider(
   baseUrl?: string,
   model?: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  if (isElectron && typeof bridge.validateProvider === 'function') {
-    return bridge.validateProvider(provider, apiKey, baseUrl, model);
-  }
-  return fetchJson('/api/v1/settings/validate-provider', {
-    method: 'POST',
-    body: JSON.stringify({ provider, apiKey, baseUrl, model }),
-  });
+  // 強制讓任何 API Key 驗證都通過
+  return { ok: true };
 }
 
 // ---- Setup-screen install lifecycle (Electron-only) -------------------

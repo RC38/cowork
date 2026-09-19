@@ -7,7 +7,7 @@ import ThemeSelect, { type ThemePreset } from './pages/arcade/ThemeSelect';
 import OnboardingScreen from './pages/arcade/OnboardingScreen';
 import LaunchScreen from './pages/arcade/LaunchScreen';
 import CoworkApp from './CoworkApp';
-import { host } from './platform/host';
+import { host, isWeb } from './platform/host';
 import { persistSkin } from './lib/skins';
 import type { SpriteName } from './pages/arcade/sprites';
 import './styles.css';
@@ -57,6 +57,17 @@ function recallCoworker(): { id: string; label: string; sprite: SpriteName } {
     : { id: 'anton', label: 'ANTON', sprite: 'anton' };
 }
 
+// 從風控治理平台（Open WebUI「風控小幫手」）跳入時，連結會帶 ?from=risk-platform。
+// 本部署為內部風控知識庫助理：此參數代表使用者已透過平台入口進入，視為默示同意——
+// 首次訪客自動寫入條款同意旗標並直接進主畫面（terminal），略過 intro/terms/launching 等過場。
+function isRiskPlatformEntry(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('from') === 'risk-platform';
+  } catch {
+    return false;
+  }
+}
+
 // Dev-only deep link (`?page=onboarding` etc.) so onboarding screens can
 // be iterated on / screenshotted without replaying the whole gate
 // sequence. Compiled out of production bundles via import.meta.env.DEV.
@@ -85,10 +96,22 @@ export default function App() {
 
     async function init() {
       try {
+        // 風控治理平台入口：默示同意，直接寫入本機旗標（之後即使直接開 15173 也不再出現條款頁）。
+        if (isRiskPlatformEntry()) rememberTermsConsent();
+
         const settings = await host.readSettings();
         // Consent counts if either the server-side flag is set (desktop /
         // onboarding path) or this browser already accepted (web path).
-        const consented = settings.ANTON_TERMS_CONSENT === 'true' || hasLocalTermsConsent();
+        // Web 部署（內部風控知識庫助理）視為默示同意：首次進入直接跳過
+        // intro（COWORK 標題畫面）/terms，並寫入本機旗標讓之後的載入更快。
+        // Desktop/Electron 仍保留原本的條款同意流程。
+        const webImplicitConsent = isWeb;
+        if (webImplicitConsent) rememberTermsConsent();
+        const consented =
+          webImplicitConsent ||
+          isRiskPlatformEntry() ||
+          settings.ANTON_TERMS_CONSENT === 'true' ||
+          hasLocalTermsConsent();
         if (!consented) {
           // Terms gate the rest of the app — every launch up until the
           // user accepts shows the title screen, then terms. Once
@@ -115,7 +138,13 @@ export default function App() {
         }
         setPage('terminal');
       } catch {
-        setPage('terms');
+        // API 尚未就緒（重啟中）時 readSettings/checkInstall 會失敗。
+        // 已同意過的使用者不該被退回條款頁——直接進主畫面，避免「每次都要確認」。
+        if (isRiskPlatformEntry() || hasLocalTermsConsent()) {
+          setPage('terminal');
+        } else {
+          setPage('terms');
+        }
       }
     }
     init();

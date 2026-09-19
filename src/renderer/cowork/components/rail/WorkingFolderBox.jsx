@@ -4,6 +4,7 @@
 // "Artifacts" matches the Live Artifacts page's vocabulary and the
 // label users see across the rest of the app.
 
+import { useTranslation } from 'react-i18next';
 import { RailCard } from './RailCard';
 import { WorkingFolderLive } from './WorkingFolderLive';
 
@@ -13,8 +14,9 @@ export function WorkingFolderBox({
   defaultOpen = true,
   maxBodyHeight = 320,
 }) {
+  const { t } = useTranslation();
   return (
-    <RailCard title="Artifacts" defaultOpen={defaultOpen} maxBodyHeight={maxBodyHeight}>
+    <RailCard title={t('rail.artifacts')} defaultOpen={defaultOpen} maxBodyHeight={maxBodyHeight}>
       <WorkingFolderLive
         project={project}
         isStreaming={isStreaming}

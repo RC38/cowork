@@ -4,7 +4,7 @@
 // need the display name for the currently selected harness.
 
 const HARNESS_LABELS = {
-  anton: 'Anton',
+  anton: 'VeriAgent',
   hermes: 'Hermes',
 };
 

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import Ico from '../components/Icons';
 import { validateSettings, revealSettingKey, testProviders, fetchHealth } from '../api';
 import { providerTypeToKeyField, providerValueToType } from '../lib/settingsTransform';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { host } from '../../platform/host';
 import { SKINS, normalizeSkin } from '../../lib/skins';
-import { MINDS_API_KEY_URL } from '../../lib/mindsUrls';
 import { getUIVersion, isElectron } from '../../platform/host';
 
 // Provider preset → underlying canonical fields. The Settings UI uses
@@ -599,25 +599,25 @@ function SetBadge({ hasValue, active }) {
 
 // ───────────────────────── Multi-provider helpers ─────────────────────────
 
-const PROVIDER_TYPE_ORDER = ['minds-cloud', 'anthropic', 'openai', 'gemini', 'openai-compatible'];
+const PROVIDER_TYPE_ORDER = ['anthropic', 'openai', 'gemini', 'openai-compatible'];
 
 const PROVIDER_TYPE_DESC = {
-  'minds-cloud': 'Routes via MindsHub with smart model selection.',
-  anthropic: 'Use Claude models with your Anthropic API key.',
-  openai: 'Use GPT models with your OpenAI API key.',
-  gemini: 'Use Gemini models through Google\'s OpenAI-compatible endpoint.',
-  'openai-compatible': 'Any OpenAI-compatible server (Ollama, vLLM, Together, Groq, etc).',
+  'minds-cloud': '透過 MindsHub 路由，並智慧選擇模型。',
+  anthropic: '使用您的 Anthropic API 金鑰來呼叫 Claude 模型。',
+  openai: '使用您的 OpenAI API 金鑰來呼叫 GPT 模型。',
+  gemini: '透過 Google 的 OpenAI 相容端點呼叫 Gemini 模型。',
+  'openai-compatible': '任何 OpenAI 相容伺服器（Ollama、vLLM、Together、Groq 等）。',
 };
 
 const GET_KEY_URL = {
-  'minds-cloud': MINDS_API_KEY_URL,
   anthropic: 'https://console.anthropic.com/settings/keys',
   openai: 'https://platform.openai.com/api-keys',
   gemini: 'https://aistudio.google.com/apikey',
   'openai-compatible': null,
 };
 
-const PROTECTED_PROVIDER_TYPES = new Set(['minds-cloud']);
+// Provider rows the user must not be able to delete from Settings.
+const PROTECTED_PROVIDER_TYPES = new Set();
 
 function makeEmptyProvider(type) {
   const base = { type, apiKey: '', isDefault: false };
@@ -689,6 +689,7 @@ function CredentialRow({ title, subtitle, status, hasValue, children }) {
 }
 
 export default function SettingsView({ settings, setSetting, onSave, theme, onThemeChange, skin, onSkinChange, customTheme, onCustomThemeChange, agentLabel }) {
+  const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [validation, setValidation] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -734,7 +735,13 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
   // Providers state — surfaced from the server, edited inline, committed
   // on Save settings. The save handler routes through the providers path
   // when `providers` is included on the patch.
-  const providers = Array.isArray(settings.providers) ? settings.providers : [];
+  // minds-cloud rows are hidden in this build: the backend still stores a
+  // Minds API key (SSO onboarding) and transformSettingsRows backfills a
+  // minds-cloud provider for it, so filter here instead of letting the row
+  // reappear on every fetch. The picker can't add one either —
+  // PROVIDER_TYPE_ORDER no longer lists it.
+  const providers = (Array.isArray(settings.providers) ? settings.providers : [])
+    .filter((p) => p?.type !== 'minds-cloud');
   const modelMode = settings.modelMode === 'custom' ? 'custom' : 'default';
   const overrides = settings.modelOverrides || {};
   const recommendedModels = settings.recommendedModels || {};
@@ -833,14 +840,34 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
     (p) => p.type === 'openai-compatible' && !(p.name || '').trim(),
   );
 
-  // MindsHub is the permanent baseline — always show its row so the
-  // user has a path to a working provider without having to add one.
+  // Provider rows are user-managed: nothing is auto-injected here.
+  // (MindsHub's row was removed from the Settings UI; a minds-cloud
+  // provider saved by older versions still renders if present.)
+
+  // One-time migration for installs whose role settings still point at
+  // minds-cloud (now filtered out above): re-point them at the default-mode
+  // provider with its recommended pair so the model dropdowns and the Test
+  // button keep working. No-op once every role references a visible row.
+  const danglingMindsRole = ['planning', 'coding'].some(
+    (role) => roleProviderType(role) === 'minds-cloud',
+  );
   useEffect(() => {
-    if (!providers.some((p) => p.type === 'minds-cloud')) {
-      updateProviders([makeEmptyProvider('minds-cloud'), ...providers]);
+    if (!danglingMindsRole || !providers.length) return;
+    const pair = recommendedPair[defaultModeProviderType] || ['', ''];
+    const adjustedOverrides = {};
+    for (const role of ['planning', 'coding']) {
+      const o = roleOverride(role);
+      if (roleProviderType(role) === 'minds-cloud') {
+        const fallback = pair[role === 'planning' ? 0 : 1] || (recommendedModels[defaultModeProviderType]?.[0] || '');
+        adjustedOverrides[role] = { providerType: defaultModeProviderType, model: fallback };
+        setRoleDriver(role, defaultModeProviderType, fallback);
+      } else if (o) {
+        adjustedOverrides[role] = o;
+      }
     }
+    setSetting('modelOverrides', adjustedOverrides);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [providers.length, providers.some((p) => p.type === 'minds-cloud')]);
+  }, [danglingMindsRole, providers.length]);
 
   // Auto-dismiss the status banner ~3s after a clean success. Failures
   // stay sticky so the user actually sees what's broken. Cancelled on
@@ -878,22 +905,23 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
     setAddPickerOpen(false);
   };
   const removeProvider = (type) => {
-    // MindsHub stays as a permanent option even when unconfigured —
-    // it's the recommended path and users shouldn't be able to lose it.
     if (PROTECTED_PROVIDER_TYPES.has(type)) return;
     setLlmDirty(true);
     const next = providers.filter((p) => p.type !== type);
 
-    // Role settings referencing the removed provider get re-pointed
-    // at MindsHub with its recommended pair for the role.
+    // Role settings referencing the removed provider get re-pointed at a
+    // surviving provider with its recommended pair for the role. Prefer a
+    // configured survivor, else the first remaining row.
+    const fallbackProvider = next.find(providerConfigured) || next[0];
+    const fallbackType = fallbackProvider ? fallbackProvider.type : 'minds-cloud';
     const adjustedOverrides = {};
     for (const role of ['planning', 'coding']) {
       const o = roleOverride(role);
       if (roleProviderType(role) === type) {
-        const pair = recommendedPair['minds-cloud'] || ['', ''];
-        const fallback = pair[role === 'planning' ? 0 : 1] || (recommendedModels['minds-cloud']?.[0] || '');
-        adjustedOverrides[role] = { providerType: 'minds-cloud', model: fallback };
-        setRoleDriver(role, 'minds-cloud', fallback);
+        const pair = recommendedPair[fallbackType] || ['', ''];
+        const fallback = pair[role === 'planning' ? 0 : 1] || (recommendedModels[fallbackType]?.[0] || '');
+        adjustedOverrides[role] = { providerType: fallbackType, model: fallback };
+        setRoleDriver(role, fallbackType, fallback);
       } else {
         if (o) adjustedOverrides[role] = o;
       }
@@ -1039,9 +1067,9 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
           padding: '28px 28px 96px',
         }}>
           <div style={{ maxWidth: 820 }}>
-            <h1 className="page-title" style={{ marginTop: 0, marginBottom: 6 }}>Settings</h1>
+            <h1 className="page-title" style={{ marginTop: 0, marginBottom: 6 }}>設定</h1>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 22 }}>
-              {`${agentLabel || 'Anton'} configuration and local desktop preferences.`}
+              {`${agentLabel || 'Anton'} 的設定與本機桌面偏好。`}
             </div>
 
             {/* Status banner — only shown after Save or Test. While
@@ -1139,7 +1167,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
               );
             })()}
 
-            <CollapsibleGroup title="Providers">
+            <CollapsibleGroup title="供應商">
               {providers.map((p) => {
                 const isActive = activeProviderTypes.has(p.type);
                 const label = typeLabels[p.type] || p.type;
@@ -1268,9 +1296,6 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                           marginTop: 6, maxWidth: 380, lineHeight: 1.45,
                         }}>
                           <div>{PROVIDER_TYPE_DESC[p.type]}</div>
-                          {p.type === 'minds-cloud' && (
-                            <div>Required to publish artifacts to the web.</div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -1280,7 +1305,6 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                         onChange={(v) => updateProviderField(p.type, 'apiKey', v)}
                         placeholder={
                           p.type === 'anthropic' ? 'sk-ant-••••••••' :
-                          p.type === 'minds-cloud' ? 'mdb_••••••••' :
                           p.type === 'gemini' ? 'AIza••••••••' :
                           'sk-••••••••'
                         }
@@ -1296,7 +1320,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                       )}
                       {GET_KEY_URL[p.type] && (
                         <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-                          Get your API key at{' '}
+                          {t('settings.getApiKey')}
                           <a
                             href={GET_KEY_URL[p.type]}
                             target="_blank"
@@ -1304,18 +1328,6 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                             title={`Open ${GET_KEY_URL[p.type].replace(/^https?:\/\//, '')} in your browser.`}
                             style={{ color: 'var(--accent-500, #7CC4B6)' }}
                           >{GET_KEY_URL[p.type].replace(/^https?:\/\//, '')} →</a>
-                        </div>
-                      )}
-                      {p.type === 'minds-cloud' && (
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-                          Don't have an account?{' '}
-                          <a
-                            href="https://mindshub.ai"
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            title="Open mindshub.ai sign-up in your browser."
-                            style={{ color: 'var(--accent-500, #7CC4B6)' }}
-                          >Sign up at mindshub.ai →</a>
                         </div>
                       )}
                       {status === 'fail' && friendlyError && (
@@ -1360,7 +1372,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                   className="btn-secondary"
                   onClick={() => setAddPickerOpen(true)}
                   disabled={availableTypesForAdd.length === 0}
-                  title={availableTypesForAdd.length === 0 ? 'All provider types are already configured' : 'Add another provider'}
+                  title={availableTypesForAdd.length === 0 ? '所有供應商類型都已設定完成' : '新增另一個供應商'}
                   style={{
                     position: 'absolute', top: 14, left: 0,
                     display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -1370,7 +1382,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                     pointerEvents: addPickerOpen ? 'none' : (availableTypesForAdd.length === 0 ? 'none' : 'auto'),
                     cursor: availableTypesForAdd.length === 0 ? 'not-allowed' : 'pointer',
                   }}
-                >{Ico.plus(13)} Add provider</button>
+                >{Ico.plus(13)} 新增供應商</button>
 
                 {/* Open: Choose Provider: <chip> <chip> · Cancel.
                     Fades + slides up from below as it appears. */}
@@ -1384,16 +1396,16 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                 }}>
                   <strong style={{
                     fontSize: 12.5, color: 'var(--text-strong)', marginRight: 4,
-                  }}>Choose Provider:</strong>
-                  {availableTypesForAdd.map((t) => (
+                  }}>{t('settings.chooseProvider')}</strong>
+                  {availableTypesForAdd.map((typeKey) => (
                     <button
-                      key={t}
+                      key={typeKey}
                       type="button"
-                      onClick={() => addProviderOfType(t)}
+                      onClick={() => addProviderOfType(typeKey)}
                       className="btn-secondary"
-                      title={PROVIDER_TYPE_DESC[t]}
+                      title={PROVIDER_TYPE_DESC[typeKey]}
                       style={{ fontSize: 12.5, padding: '4px 10px', fontWeight: 400 }}
-                    >{typeLabels[t] || t}</button>
+                    >{typeLabels[typeKey] || typeKey}</button>
                   ))}
                   <button
                     type="button"
@@ -1411,8 +1423,8 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
               </div>
             </CollapsibleGroup>
 
-            <CollapsibleGroup title="Agent">
-              <Section title="Harness" subtitle={`Which AI agent powers your tasks. ${agentLabel || 'Anton'} is the default; Hermes is an alternative agent with its own tool and memory system.`}>
+            <CollapsibleGroup title={t('settings.agent')}>
+              <Section title={t('settings.harness')} subtitle={t('settings.harnessDesc')}>
                 <Segmented
                   value={settings.harness || 'anton'}
                   onChange={(v) => { setSetting('harness', v); setLlmDirty(true); }}
@@ -1425,7 +1437,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
               </Section>
             </CollapsibleGroup>
 
-            <CollapsibleGroup title="Agent Models">
+            <CollapsibleGroup title={t('settings.agentModels')}>
               {(() => {
                 // The default-mode provider is the implicit fallback for
                 // any role that hasn't been explicitly assigned an
@@ -1461,7 +1473,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                   };
 
                   return (
-                    <Section title={label} subtitle={`Used for ${role === 'planning' ? 'reasoning, orchestration, and responses' : 'scratchpad code generation'}.`}>
+                    <Section title={label} subtitle={role === 'planning' ? t('settings.planningModelDesc') : t('settings.codingModelDesc')}>
                       <div style={{ display: 'grid', gap: 6 }}>
                         {multipleProviders && (
                           <select
@@ -1546,40 +1558,40 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                 };
                 return (
                   <>
-                    <RoleRow role="planning" label="Planning model" />
-                    <RoleRow role="coding"   label="Coding model" />
+                    <RoleRow role="planning" label={t('settings.planningModel')} />
+                    <RoleRow role="coding"   label={t('settings.codingModel')} />
                   </>
                 );
               })()}
             </CollapsibleGroup>
 
-            <CollapsibleGroup title="Appearance">
-              <Section title="Theme" subtitle="Light or dark — also drives the animated background.">
+            <CollapsibleGroup title={t('settings.appearance')}>
+              <Section title={t('settings.theme')} subtitle={t('settings.themeDesc')}>
                 <Segmented
                   value={theme || 'dark'}
                   onChange={(v) => onThemeChange?.(v)}
-                  groupLabel="Theme"
+                  groupLabel={t('settings.theme')}
                   options={[
                     {
                       value: 'light',
-                      label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{Ico.sun(13)} Light</span>),
+                      label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{Ico.sun(13)} {t('settings.light')}</span>),
                       ariaLabel: 'Light theme',
                       title: 'Use the light theme.',
                     },
                     {
                       value: 'dark',
-                      label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{Ico.moon(13)} Dark</span>),
+                      label: (<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{Ico.moon(13)} {t('settings.dark')}</span>),
                       ariaLabel: 'Dark theme',
                       title: 'Use the dark theme.',
                     },
                   ]}
                 />
               </Section>
-              <Section title="Style" subtitle="Normal, 8-Bit, or design your own with Custom. Combines with light and dark.">
+              <Section title="外觀風格" subtitle="標準、8-Bit，或用「自訂」設計您自己的。可與淺色／深色搭配使用。">
                 <Segmented
                   value={normalizeSkin(skin)}
                   onChange={(v) => onSkinChange?.(v)}
-                  groupLabel="Style"
+                  groupLabel="外觀風格"
                   options={SKINS.map((s) => ({
                     value: s.id,
                     label: s.icon && Ico[s.icon]
@@ -1592,7 +1604,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
               </Section>
               {normalizeSkin(skin) === 'custom' && customTheme && (
                 <>
-                  <Section title="Accent color" subtitle="Buttons, highlights, focus — the brand color of your theme.">
+                  <Section title={t('settings.accentColor')} subtitle={t('settings.accentColorDesc')}>
                     <input
                       type="color"
                       value={customTheme.accent}
@@ -1601,7 +1613,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                       style={{ width: 64, height: 32, padding: 2, border: '1px solid var(--line-2)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
                     />
                   </Section>
-                  <Section title="Background" subtitle="Pick a base color — surfaces and text shades derive from it — or follow the Light/Dark theme.">
+                  <Section title={t('settings.background')} subtitle={t('settings.backgroundDesc')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <input
                         type="color"
@@ -1617,34 +1629,34 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                           checked={customTheme.bg === null}
                           onChange={(e) => onCustomThemeChange?.({ ...customTheme, bg: e.target.checked ? null : (theme === 'light' ? '#fafafa' : '#080d18') })}
                         />
-                        Follow Light/Dark
+                        {t('settings.followLightDark')}
                       </label>
                     </div>
                   </Section>
-                  <Section title="Corners" subtitle="How sharp the surfaces feel.">
+                  <Section title={t('settings.corners')} subtitle={t('settings.cornersDesc')}>
                     <Segmented
                       value={String(customTheme.radius)}
                       onChange={(v) => onCustomThemeChange?.({ ...customTheme, radius: Number(v) })}
                       groupLabel="Corner radius"
                       options={[
-                        { value: '0', label: 'Square', ariaLabel: 'Square corners', title: 'Sharp pixel corners.' },
-                        { value: '6', label: 'Soft', ariaLabel: 'Soft corners', title: 'Gently rounded.' },
-                        { value: '12', label: 'Round', ariaLabel: 'Round corners', title: 'Fully rounded.' },
+                        { value: '0', label: t('settings.square'), ariaLabel: 'Square corners', title: 'Sharp pixel corners.' },
+                        { value: '6', label: t('settings.soft'), ariaLabel: 'Soft corners', title: 'Gently rounded.' },
+                        { value: '12', label: t('settings.round'), ariaLabel: 'Round corners', title: 'Fully rounded.' },
                       ]}
                     />
                   </Section>
-                  <Section title="Typeface" subtitle="Standard UI font, or mono everywhere for the terminal feel.">
+                  <Section title={t('settings.typeface')} subtitle={t('settings.typefaceDesc')}>
                     <Segmented
                       value={customTheme.font}
                       onChange={(v) => onCustomThemeChange?.({ ...customTheme, font: v })}
                       groupLabel="Custom typeface"
                       options={[
-                        { value: 'standard', label: 'Standard', ariaLabel: 'Standard font', title: 'Inter for UI text.' },
-                        { value: 'mono', label: 'Mono', ariaLabel: 'Mono font', title: 'JetBrains Mono everywhere.' },
+                        { value: 'standard', label: t('settings.standard'), ariaLabel: 'Standard font', title: 'Inter for UI text.' },
+                        { value: 'mono', label: t('settings.mono'), ariaLabel: 'Mono font', title: 'JetBrains Mono everywhere.' },
                       ]}
                     />
                   </Section>
-                  <Section title="Scanlines" subtitle="A faint CRT scanline overlay across the app.">
+                  <Section title={t('settings.scanlines')} subtitle={t('settings.scanlinesDesc')}>
                     <Toggle
                       value={customTheme.scanlines}
                       onChange={(v) => onCustomThemeChange?.({ ...customTheme, scanlines: v })}
@@ -1654,7 +1666,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                   </Section>
                 </>
               )}
-              <Section title="Greeting" subtitle="The line shown when you start a new task.">
+              <Section title={t('settings.greeting')} subtitle={t('settings.greetingDesc')}>
                 <TextInput
                   value={settings.greeting}
                   onChange={(v) => setSetting('greeting', v)}
@@ -1663,7 +1675,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                 />
               </Section>
               <div className="settings-hide-mobile">
-                <Section title="Animated background" subtitle="Toggle off if you prefer a flat surface instead of an animated grid.">
+                <Section title={t('settings.animatedBackground')} subtitle={t('settings.animatedBackgroundDesc')}>
                   <Toggle
                     value={settings.showDots}
                     onChange={(v) => setSetting('showDots', v)}
@@ -1671,7 +1683,7 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                     ariaLabel="Animated background"
                   />
                 </Section>
-                <Section title="Show nav-panel counters" subtitle="Badge counts on Projects / Scheduled / Artifacts / Connected apps, plus the time-since label on each Recent row.">
+                <Section title={t('settings.showNavPanelCounters')} subtitle={t('settings.showNavPanelCountersDesc')}>
                   <Toggle
                     value={settings.showCounters !== false}
                     onChange={(v) => setSetting('showCounters', v)}
@@ -1878,41 +1890,41 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
               );
             })()}
 
-            <CollapsibleGroup title="Memory" defaultOpen={false}>
-              <Section title="Memory mode" subtitle={`How ${agentLabel || 'Anton'} updates its long-term memory.`}>
+            <CollapsibleGroup title="記憶" defaultOpen={false}>
+              <Section title="記憶模式" subtitle={`${agentLabel || 'Anton'} 如何更新其長期記憶。`}>
                 <Segmented
                   value={settings.memoryMode ?? 'autopilot'}
                   onChange={(v) => setSetting('memoryMode', v)}
-                  groupLabel="Memory mode"
+                  groupLabel="記憶模式"
                   options={[
-                    { value: 'autopilot', label: 'Autopilot', title: `${agentLabel || 'Anton'} updates long-term memory automatically.` },
-                    { value: 'copilot',   label: 'Copilot',   title: `${agentLabel || 'Anton'} suggests memory updates for you to confirm.` },
-                    { value: 'off',       label: 'Off',       title: 'Disable long-term memory updates.' },
+                    { value: 'autopilot', label: '自動駕駛', title: `${agentLabel || 'Anton'} 會自動更新長期記憶。` },
+                    { value: 'copilot',   label: '協作駕駛', title: `${agentLabel || 'Anton'} 會建議記憶更新，由您確認後套用。` },
+                    { value: 'off',       label: '關閉',     title: '停用長期記憶更新。' },
                   ]}
                 />
               </Section>
-              <Section title="Episodic memory" subtitle="Save conversation history for future recall.">
+              <Section title="情景記憶" subtitle="儲存對話紀錄以供日後回憶。">
                 <Toggle
                   value={settings.episodicMemory ?? true}
                   onChange={(v) => setSetting('episodicMemory', v)}
-                  title={`Save conversation history so ${agentLabel || 'Anton'} can recall past tasks.`}
-                  ariaLabel="Episodic memory"
+                  title={`儲存對話紀錄，讓 ${agentLabel || 'Anton'} 能回憶過去任務。`}
+                  ariaLabel="情景記憶"
                 />
               </Section>
-              <Section title="Proactive dashboards" subtitle="Auto-generate HTML reports from scratchpad output.">
+              <Section title="主動儀表板" subtitle="從草稿區產出自動產生 HTML 報告。">
                 <Toggle
                   value={settings.proactiveDashboards ?? false}
                   onChange={(v) => setSetting('proactiveDashboards', v)}
-                  title="Auto-generate HTML reports from scratchpad output."
-                  ariaLabel="Proactive dashboards"
+                  title="從草稿區產出自動產生 HTML 報告。"
+                  ariaLabel="主動儀表板"
                 />
               </Section>
             </CollapsibleGroup>
 
-            <CollapsibleGroup title="Updates" defaultOpen={false}>
+            <CollapsibleGroup title={t('settings.updates')} defaultOpen={false}>
               <Section
-                title="Current version"
-                subtitle="The app, UI bundle, and server versions currently running."
+                title={t('settings.currentVersion')}
+                subtitle={t('settings.currentVersionDesc')}
               >
                 <div style={{
                   display: 'flex', flexDirection: 'column', gap: 6,
@@ -1949,16 +1961,16 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                 </div>
               </Section>
               <Section
-                title="UI updates"
-                subtitle="How over-the-air UI updates are applied when a new version is published. Server updates are always applied automatically on launch."
+                title="UI 更新"
+                subtitle="當新版本發布時，如何套用遠端（over-the-air）的 UI 更新。伺服器更新一律會在啟動時自動套用。"
               >
                 <Segmented
                   value={settings.uiUpdateMode ?? 'auto'}
                   onChange={(v) => setSetting('uiUpdateMode', v)}
-                  groupLabel="UI update mode"
+                  groupLabel="UI 更新模式"
                   options={[
-                    { value: 'auto',   label: 'Auto',   title: 'Download and apply UI updates automatically.' },
-                    { value: 'manual', label: 'Manual', title: 'Only apply UI updates when triggered manually.' },
+                    { value: 'auto',   label: '自動', title: '自動下載並套用 UI 更新。' },
+                    { value: 'manual', label: '手動', title: '僅在手動觸發時才套用 UI 更新。' },
                   ]}
                 />
               </Section>
@@ -2050,17 +2062,17 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
                 : tested
                   ? (configReady ? 'Test passed — provider, model, and credentials look good.' : (configError || 'Test reported a problem.'))
                   : saved
-                    ? 'Settings saved.'
+                    ? t('settings.saved')
                     : configError
                       ? configError
-                      : 'Changes apply on save.'}
+                      : t('settings.changesApplyOnSave')}
             </span>
           </div>
           <button
             className="btn-secondary"
             onClick={validate}
             title="Re-run the configuration and active-provider tests."
-          >Test</button>
+          >{t('settings.test')}</button>
           <button
             className="btn-primary"
             onClick={save}
@@ -2081,8 +2093,8 @@ export default function SettingsView({ settings, setSetting, onSave, theme, onTh
             {testing
               ? 'Saving…'
               : settingsDirty
-                ? 'Save settings'
-                : (<>{Ico.check(14)} Saved</>)}
+                ? t('settings.saveSettings')
+                : (<>{Ico.check(14)} {t('settings.saved')}</>)}
           </button>
         </div>
       </div>

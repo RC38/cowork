@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Ico from '../components/Icons';
 import { PageHeader as CollectionPageHeader } from '../components/collection';
 import { MarkdownContent } from '../components/markdown/MarkdownContent';
@@ -18,13 +19,13 @@ import {
 } from '../api';
 
 const TITLES = {
-  memory: ['Memory', 'Rules, lessons, identity notes, and saved episodes the agent can reuse.'],
-  skills: ['Skill Library', 'Saved agent skills and recall guidance.'],
+  memory: ['memories.title', 'memories.subtitle'],
+  skills: ['skills.title', 'skills.subtitle'],
   // 'connect' (legacy datasources page) is gone — Connect Apps and
   // Data is the canonical surface. Kept the import paths for
   // fetchDatasources / validateDatasource because they're still
   // used by other call sites (the agent etc.).
-  publish: ['Publish', 'HTML artifacts the agent can publish with Minds credentials.'],
+  publish: ['publish.title', 'publish.subtitle'], // Note: You'll likely want to translate publish as well if you haven't yet, but doing it consistently here.
 };
 
 function PageHeader({ title, subtitle }) {
@@ -70,6 +71,7 @@ function shouldUseTextarea(field) {
 }
 
 export default function UtilitiesView({ kind, project, onRefreshArtifacts }) {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
   const [status, setStatus] = useState('');
@@ -87,7 +89,9 @@ export default function UtilitiesView({ kind, project, onRefreshArtifacts }) {
     if (kind === 'publish') fetchPublishable().then(setData).catch((err) => setStatus(err.message));
   }, [kind, project?.path]);
 
-  const [title, subtitle] = TITLES[kind] || ['Utility', ''];
+  const [titleKey, subtitleKey] = TITLES[kind] || ['Utility', ''];
+  const title = t(titleKey) || titleKey;
+  const subtitle = t(subtitleKey) || subtitleKey;
 
   // Memory kind owns its own scrolling: the sidebar list and the
   // viewer pane each scroll independently so flipping through a long
@@ -135,6 +139,7 @@ export default function UtilitiesView({ kind, project, onRefreshArtifacts }) {
 }
 
 function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
+  const { t } = useTranslation();
   const sections = Array.isArray(data?.sections) ? data.sections : [];
   const projectSections = sections.filter((s) => s.scope === 'Project' && (s.files || []).length > 0);
   const globalSection = sections.find((s) => s.scope === 'Global');
@@ -333,7 +338,7 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
         content: draft.content,
         projectPath: draft.scope === 'Project' ? draft.projectPath : null,
       });
-      setStatus(`Saved memory file ${draft.relativePath}.`);
+      setStatus(t('memories.savedMessage', { path: draft.relativePath }));
       setEditing(null);
       await refresh();
     } catch (err) {
@@ -342,14 +347,14 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
   };
 
   const remove = async (file) => {
-    if (!window.confirm(`Delete memory file "${file.relativePath}"? A backup will be kept.`)) return;
+    if (!window.confirm(t('memories.confirmDelete', { path: file.relativePath }))) return;
     try {
       await deleteMemory({
         scope: file.scope || 'Global',
         relativePath: file.relativePath,
         projectPath: file.scope === 'Project' ? file.projectPath : null,
       });
-      setStatus(`Deleted memory file ${file.relativePath}.`);
+      setStatus(t('memories.deletedMessage', { path: file.relativePath }));
       onSelect(null);
       await refresh();
     } catch (err) {
@@ -364,11 +369,11 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
   return (
     <>
       <CollectionPageHeader
-        title="Memory"
-        subtitle="Rules, lessons, identity notes, and saved episodes the agent can reuse."
+        title={t('memories.title')}
+        subtitle={t('memories.subtitle')}
         actions={
           <button type="button" className="btn-primary" onClick={startNew}>
-            {Ico.plus(14)} New memory
+            {Ico.plus(14)} {t('memories.newMemory')}
           </button>
         }
       />
@@ -394,7 +399,7 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
               the user can still create one from scratch. */}
           {(globalSection?.files?.length || 0) > 0 && (
             <MemorySectionList
-              heading="Global"
+              heading={t('memories.global')}
               files={globalSection?.files || []}
               selected={selected}
               onSelect={onSelect}
@@ -403,14 +408,14 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
           {projectSections.map((section, idx) => (
             <MemorySectionList
               key={`${section.projectName}-${idx}`}
-              heading={`Project · ${section.projectName}`}
+              heading={t('memories.projectPrefix', { name: section.projectName })}
               files={section.files}
               selected={selected}
               onSelect={onSelect}
               isActive={section.projectName === project?.name}
             />
           ))}
-          {totalFiles === 0 && <EmptyState>No memory files found.</EmptyState>}
+          {totalFiles === 0 && <EmptyState>{t('memories.noMemoryFiles')}</EmptyState>}
         </div>
         <div className="scroll-clean" style={{
           overflowY: 'auto', minHeight: 0,
@@ -426,9 +431,9 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
                   onChange={(e) => onScopeChange(e.target.value)}
                   style={selectStyle}
                 >
-                  <option value="Global">Global</option>
+                  <option value="Global">{t('memories.global')}</option>
                   {projectChoices.map((p) => (
-                    <option key={p.name} value={`Project::${p.name}`}>Project · {p.name}</option>
+                    <option key={p.name} value={`Project::${p.name}`}>{t('memories.projectPrefix', { name: p.name })}</option>
                   ))}
                 </select>
                 <select
@@ -436,9 +441,9 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
                   onChange={(e) => onKindChange(e.target.value)}
                   style={selectStyle}
                 >
-                  <option value="lessons">Lessons</option>
-                  <option value="rules">Rules</option>
-                  <option value="topic">Topic</option>
+                  <option value="lessons">{t('memories.lessons')}</option>
+                  <option value="rules">{t('memories.rules')}</option>
+                  <option value="topic">{t('memories.topic')}</option>
                 </select>
               </div>
 
@@ -494,8 +499,8 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
                 style={memoryEditorStyle}
               />
               <div className="dialog-actions">
-                <button className="btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
-                <button className="btn-primary" onClick={save} disabled={!!topicConflict}>Save memory</button>
+                <button className="btn-secondary" onClick={() => setEditing(null)}>{t('memories.cancel')}</button>
+                <button className="btn-primary" onClick={save} disabled={!!topicConflict}>{t('memories.saveMemory')}</button>
               </div>
             </div>
           ) : editing === 'edit' && selected ? (
@@ -508,12 +513,12 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
                   <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-strong)' }}>{selected.relativePath}</div>
                   <div style={{ fontSize: 12, color: 'var(--frost-600)' }}>
                     {selected.scope === 'Project' && selected.projectName
-                      ? `Project · ${selected.projectName}`
-                      : selected.scope}
+                      ? t('memories.projectPrefix', { name: selected.projectName })
+                      : (selected.scope === 'Global' ? t('memories.global') : selected.scope)}
                   </div>
                 </div>
-                <button className="btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
-                <button className="btn-primary" onClick={save}>Save</button>
+                <button className="btn-secondary" onClick={() => setEditing(null)}>{t('memories.cancel')}</button>
+                <button className="btn-primary" onClick={save}>{t('memories.save')}</button>
               </div>
               <textarea
                 value={draft.content}
@@ -528,12 +533,12 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
                   <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-strong)' }}>{selected.relativePath}</div>
                   <div style={{ fontSize: 12, color: 'var(--frost-600)' }}>
                     {selected.scope === 'Project' && selected.projectName
-                      ? `Project · ${selected.projectName}`
-                      : selected.scope}
+                      ? t('memories.projectPrefix', { name: selected.projectName })
+                      : (selected.scope === 'Global' ? t('memories.global') : selected.scope)}
                   </div>
                 </div>
-                <button className="btn-secondary" onClick={() => startEdit(selected)}>Edit</button>
-                <button className="btn-secondary" onClick={() => remove(selected)}>Delete</button>
+                <button className="btn-secondary" onClick={() => startEdit(selected)}>{t('memories.edit')}</button>
+                <button className="btn-secondary" onClick={() => remove(selected)}>{t('memories.delete')}</button>
               </div>
               {/* Memory files are always `.md` — render via the same
                   MarkdownContent the chat column uses so headings,
@@ -549,7 +554,7 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
               </div>
             </>
           ) : (
-            <EmptyState>Select a memory file to inspect it.</EmptyState>
+            <EmptyState>{t('memories.selectToInspect')}</EmptyState>
           )}
         </div>
       </div>
@@ -558,6 +563,7 @@ function MemoryView({ data, selected, onSelect, project, setData, setStatus }) {
 }
 
 function MemorySectionList({ heading, files, selected, onSelect, isActive }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <div style={{
@@ -566,7 +572,7 @@ function MemorySectionList({ heading, files, selected, onSelect, isActive }) {
         padding: '0 4px 4px', display: 'flex', alignItems: 'center', gap: 6,
       }}>
         <span>{heading}</span>
-        {isActive && <span style={{ color: 'var(--accent)', letterSpacing: 0, textTransform: 'none', fontFamily: 'var(--font-body)', fontSize: 10.5 }}>· active</span>}
+        {isActive && <span style={{ color: 'var(--accent)', letterSpacing: 0, textTransform: 'none', fontFamily: 'var(--font-body)', fontSize: 10.5 }}>{t('memories.active')}</span>}
         <span style={{ marginLeft: 'auto', color: 'var(--ink-4)', letterSpacing: 0, textTransform: 'none', fontFamily: 'var(--font-body)' }}>{files.length}</span>
       </div>
       {files.length === 0 ? (
@@ -587,18 +593,19 @@ function MemorySectionList({ heading, files, selected, onSelect, isActive }) {
 }
 
 function SkillsView({ data, selected, onSelect, onSaved, onDeleted, setStatus }) {
+  const { t } = useTranslation();
   const skills = data.skills || [];
   const emptyDraft = { label: '', name: '', description: '', whenToUse: '', declarative: '' };
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(emptyDraft);
 
   const remove = async (skill) => {
-    if (!window.confirm(`Remove skill "${skill.name}"?`)) return;
+    if (!window.confirm(t('skills.confirmRemove', { name: skill.name }))) return;
     try {
       await deleteSkill(skill.label);
       onDeleted(skill.label);
       onSelect(null);
-      setStatus(`Removed ${skill.name}.`);
+      setStatus(t('skills.removedMessage', { name: skill.name }));
     } catch (err) {
       setStatus(err.message || 'Could not remove skill.');
     }
@@ -625,7 +632,7 @@ function SkillsView({ data, selected, onSelect, onSaved, onDeleted, setStatus })
   const save = async () => {
     try {
       await saveSkill(draft);
-      setStatus(`Saved skill ${draft.name || draft.label}.`);
+      setStatus(t('skills.savedMessage', { name: draft.name || draft.label }));
       setEditing(null);
       await onSaved?.();
     } catch (err) {
@@ -636,28 +643,28 @@ function SkillsView({ data, selected, onSelect, onSaved, onDeleted, setStatus })
   return (
     <div className="util-split" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', minHeight: 0 }}>
       <div style={{ padding: 20, borderRight: '1px solid var(--border-0)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <button className="btn-primary" onClick={startNew} style={{ marginBottom: 8 }}>{Ico.plus(14)} New skill</button>
+        <button className="btn-primary" onClick={startNew} style={{ marginBottom: 8 }}>{Ico.plus(14)} {t('skills.newSkill')}</button>
         {skills.map((skill) => (
           <button key={skill.label} className={`recent-item${selected?.label === skill.label ? ' active' : ''}`} onClick={() => onSelect(skill)} style={{ height: 'auto', minHeight: 38, padding: '8px 10px' }}>
             <span style={{ color: 'var(--primary-700)', display: 'inline-flex' }}>{Ico.brain(14)}</span>
             <span style={{ flex: 1, whiteSpace: 'normal' }}>{skill.name}</span>
           </button>
         ))}
-        {!skills.length && <EmptyState>No saved skills found.</EmptyState>}
+        {!skills.length && <EmptyState>{t('skills.noSkillsFound')}</EmptyState>}
       </div>
       <div style={{ padding: 24 }}>
         {editing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 8 }}>
-              <input aria-label="Skill identifier" value={draft.label} onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))} placeholder="skill_label" style={inputStyle} disabled={editing === 'edit'} />
-              <input aria-label="Skill name" value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Skill name" style={inputStyle} />
+              <input aria-label="Skill identifier" value={draft.label} onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))} placeholder={t('skills.placeholder.label')} style={inputStyle} disabled={editing === 'edit'} />
+              <input aria-label="Skill name" value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder={t('skills.placeholder.name')} style={inputStyle} />
             </div>
-            <input aria-label="Skill short description" value={draft.description} onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))} placeholder="Short description" style={inputStyle} />
-            <input aria-label="When the agent should use this skill" value={draft.whenToUse} onChange={(e) => setDraft((prev) => ({ ...prev, whenToUse: e.target.value }))} placeholder="When the agent should use this skill" style={inputStyle} />
-            <textarea aria-label="Skill instructions" value={draft.declarative} onChange={(e) => setDraft((prev) => ({ ...prev, declarative: e.target.value }))} rows={16} placeholder="Skill instructions..." style={{ ...inputStyle, height: 'auto', padding: 10, fontFamily: 'var(--font-mono)', userSelect: 'text' }} />
+            <input aria-label="Skill short description" value={draft.description} onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))} placeholder={t('skills.placeholder.description')} style={inputStyle} />
+            <input aria-label="When the agent should use this skill" value={draft.whenToUse} onChange={(e) => setDraft((prev) => ({ ...prev, whenToUse: e.target.value }))} placeholder={t('skills.placeholder.whenToUse')} style={inputStyle} />
+            <textarea aria-label="Skill instructions" value={draft.declarative} onChange={(e) => setDraft((prev) => ({ ...prev, declarative: e.target.value }))} rows={16} placeholder={t('skills.placeholder.instructions')} style={{ ...inputStyle, height: 'auto', padding: 10, fontFamily: 'var(--font-mono)', userSelect: 'text' }} />
             <div className="dialog-actions">
-              <button className="secondary-btn" onClick={() => setEditing(null)}>Cancel</button>
-              <button className="primary-btn" disabled={!draft.label.trim() || !draft.name.trim() || !draft.declarative.trim()} onClick={save}>Save skill</button>
+              <button className="secondary-btn" onClick={() => setEditing(null)}>{t('skills.cancel')}</button>
+              <button className="primary-btn" disabled={!draft.label.trim() || !draft.name.trim() || !draft.declarative.trim()} onClick={save}>{t('skills.saveSkill')}</button>
             </div>
           </div>
         ) : selected ? (
@@ -667,14 +674,14 @@ function SkillsView({ data, selected, onSelect, onSaved, onDeleted, setStatus })
                 <div style={{ fontSize: 15, fontWeight: 650, color: 'var(--text-strong)' }}>{selected.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--frost-600)' }}>{selected.label}</div>
               </div>
-              <button className="btn-secondary" onClick={() => startEdit(selected)}>Edit</button>
-              <button className="btn-secondary" onClick={() => remove(selected)}>Remove</button>
+              <button className="btn-secondary" onClick={() => startEdit(selected)}>{t('skills.edit')}</button>
+              <button className="btn-secondary" onClick={() => remove(selected)}>{t('skills.remove')}</button>
             </div>
             {selected.description && <p style={{ margin: '0 0 12px', fontSize: 13.5, color: 'var(--frost-700)' }}>{selected.description}</p>}
             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', userSelect: 'text', fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.55 }}>{selected.declarative}</pre>
           </>
         ) : (
-          <EmptyState>Select a skill to inspect it.</EmptyState>
+          <EmptyState>{t('skills.selectToInspect')}</EmptyState>
         )}
       </div>
     </div>

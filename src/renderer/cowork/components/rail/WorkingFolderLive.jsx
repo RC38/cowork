@@ -13,6 +13,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import Ico from '../Icons';
 import {
@@ -64,6 +65,7 @@ function iconForRow(row) {
 
 
 export function WorkingFolderLive({ project, isStreaming }) {
+  const { t } = useTranslation();
   const [resolvedProject, setResolvedProject] = useState(null);
   useEffect(() => {
     if (project) return;
@@ -336,8 +338,7 @@ export function WorkingFolderLive({ project, isStreaming }) {
       )}
       {rows.length === 0 ? (
         <p className="text-[12.5px] text-ink-4 px-1 pb-1">
-          No artifacts yet — the agent will save dashboards, reports, and
-          datasets here as it produces them.
+          {t('rail.noArtifacts')}
         </p>
       ) : (
         <div className="flex flex-col gap-0.5">

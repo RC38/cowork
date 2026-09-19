@@ -4,6 +4,8 @@ import { Spinner } from './ui';
 import { TaskMenu } from './TaskMenu';
 import RecentsModal from './RecentsModal';
 import { host } from '../../platform/host';
+import { useTranslation } from 'react-i18next';
+import { MomoLogo } from './MomoLogo';
 
 // Platform-aware modifier symbol for keyboard hints. Mac uses ⌘ glyph,
 // Windows/Linux use Ctrl+ literal.
@@ -216,11 +218,9 @@ export default function Sidebar({
   // false, hide the per-nav badge counts AND the time-since slot
   // on each Recent row. Default true.
   showCounters = true,
+  agentStatus,
 }) {
-  // Decorate every task with its pinned state. Tasks come from the
-  // conversations endpoint which doesn't know about pins (they live
-  // in a separate /pins store), so without this the menu shows
-  // "Pin" on items that are already pinned.
+  const { t } = useTranslation();
   const pinnedIds = new Set(
     (pins || []).filter((p) => p.item_type === 'conversation').map((p) => p.item_id)
   );
@@ -420,6 +420,21 @@ export default function Sidebar({
             past the traffic-light pad). */}
         <div style={{ flex: 1 }} />
         <div className="anton-sidebar__chrome-left" style={{ marginLeft: 'auto', gap: 4 }}>
+          {/* Return to the risk-control platform dashboard (Open WebUI on :5173).
+              自動沿用目前入口的 protocol + host（IP/localhost），僅固定埠號 5173。 */}
+          <button
+            className="icon-btn"
+            onClick={() => {
+              const { protocol, hostname } = window.location;
+              window.location.href = `${protocol}//${hostname}:5173/dashboard/exception-report`;
+            }}
+            title="回到風控儀表板"
+            aria-label="回到風控儀表板"
+            style={{ WebkitAppRegion: 'no-drag', width: 'auto', padding: '0 10px', gap: 6, fontSize: 13 }}
+          >
+            {Ico.grid(15)}
+            <span>回到風控儀表板</span>
+          </button>
           <div className="anton-sidebar__chrome-buttons">
             {/* Collapse button — always mounted so the search icon
                 next to it never shifts when the host route changes
@@ -479,16 +494,19 @@ export default function Sidebar({
               {Ico.search(15)}
             </button>
           </div>
-          <span
-            aria-hidden="true"
+          <div
+            className="anton-sidebar__wordmark"
             style={{
-              color: 'var(--text-muted)',
-              opacity: 0.5,
-              fontSize: 13,
-              userSelect: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              marginLeft: 8,
+              lineHeight: 1.2,
             }}
-          >·</span>
-          <div className="anton-sidebar__wordmark">Minds</div>
+          >
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>風控治理</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', letterSpacing: '0.05em' }}>VERIAGENT後台</span>
+          </div>
         </div>
       </div>
 
@@ -515,19 +533,19 @@ export default function Sidebar({
           <button
             className="btn-new-task"
             onClick={onNewTask}
-            title={`New task  (${shortcut('N')})`}
+            title={`${t('sidebar.newTask')}  (${shortcut('N')})`}
           >
             <span style={{ display: 'inline-flex' }}>{Ico.plus(14)}</span>
-            <span className="btn-new-task__label">New task</span>
+            <span className="btn-new-task__label">{t('sidebar.newTask')}</span>
             <span className="kbd">{shortcut('N')}</span>
           </button>
         </div>
 
         {/* Primary nav */}
         <div className="nav-list" style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <NavItem icon={Ico.folder(15)}  label="Projects"        onClick={() => onNavigate('projects')}  active={activeRoute === 'projects'}  badge={showCounters ? (projectsCount  || null) : null} />
-          <NavItem icon={Ico.clock(15)}   label="Scheduled Tasks" onClick={() => onNavigate('scheduled')} active={activeRoute === 'scheduled'} badge={showCounters ? (scheduledCount || null) : null} />
-          <NavItem icon={Ico.sparkle(15)} label="Live Artifacts"  onClick={() => onNavigate('artifacts')} active={activeRoute === 'artifacts'} badge={showCounters ? (artifactsCount || null) : null} />
+          <NavItem icon={Ico.folder(15)}  label={t('sidebar.projects')}        onClick={() => onNavigate('projects')}  active={activeRoute === 'projects'}  badge={showCounters ? (projectsCount  || null) : null} />
+          <NavItem icon={Ico.clock(15)}   label={t('sidebar.scheduledTasks')} onClick={() => onNavigate('scheduled')} active={activeRoute === 'scheduled'} badge={showCounters ? (scheduledCount || null) : null} />
+          <NavItem icon={Ico.sparkle(15)} label={t('sidebar.liveArtifacts')}  onClick={() => onNavigate('artifacts')} active={activeRoute === 'artifacts'} badge={showCounters ? (artifactsCount || null) : null} />
           {/* Connect Apps and Data — replaces "Customize". Reuses the
               `customize` route key so existing in-flight links still
               work. The page now lists connected apps + datasources in
@@ -537,34 +555,30 @@ export default function Sidebar({
               live "you have N connections" indicator. */}
           <NavItem
             icon={Ico.link(15)}
-            label={connectorsCount > 0 ? 'Connected Apps and Data' : 'Connect Apps and Data'}
+            label={connectorsCount > 0 ? t('sidebar.connectedApps') : t('sidebar.connectApps')}
             onClick={() => onNavigate('customize')}
             active={activeRoute === 'customize'}
             badge={showCounters ? (connectorsCount || null) : null}
           />
-          {/* Channels — connect messaging apps (Telegram/Slack/etc.) so
-              people can talk to the agent from their chats. Routes to the
-              `dispatch` key, which App.jsx renders as <ChannelsView />. */}
-          <NavItem icon={Ico.chats(15)} label="Channels" onClick={() => onNavigate('dispatch')} active={activeRoute === 'dispatch'} />
         </div>
 
         {/* Anton group — visually grouped panel for the brain-style nav.
             Order: Memories → Skills library → Settings. Labels read
             as the things the user OWNS (plural collections) rather
             than the abstract concepts the engine names them after. */}
-        <div className="section-label">{agentLabel || 'Anton'}</div>
+        <div className="section-label">{agentLabel || 'VeriAgent'}</div>
         <div className="anton-group">
-          <NavItem icon={Ico.brain(15)}    label="Memories"       onClick={() => onNavigate('memory')}   active={activeRoute === 'memory'}   compact />
-          <NavItem icon={Ico.cube(15)}     label="Skills library" onClick={() => onNavigate('skills')}   active={activeRoute === 'skills'}   compact />
+          <NavItem icon={Ico.brain(15)}    label={t('sidebar.memories')}       onClick={() => onNavigate('memory')}   active={activeRoute === 'memory'}   compact />
+          <NavItem icon={Ico.cube(15)}     label={t('sidebar.skillsLibrary')} onClick={() => onNavigate('skills')}   active={activeRoute === 'skills'}   compact />
           {/* "Connect data" removed from the sidebar — the canonical
               connector surface is the Connect Apps and Data page
               (route='customize'). The legacy 'connect' route used to
               render UtilitiesView/ConnectView and has been retired. */}
-          <NavItem icon={Ico.settings(15)} label="Settings"       onClick={() => onNavigate('settings')} active={activeRoute === 'settings'} compact />
+          <NavItem icon={Ico.settings(15)} label={t('sidebar.settings')}       onClick={() => onNavigate('settings')} active={activeRoute === 'settings'} compact />
         </div>
 
         {/* Pinned */}
-        <div className="section-label">Pinned</div>
+        <div className="section-label">{t('sidebar.pinned')}</div>
         {pinnedTasks.length ? (
           <div style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: 1 }}>
             {pinnedTasks.map((task) => (
@@ -587,7 +601,7 @@ export default function Sidebar({
         ) : (
           <div className="pinned-empty">
             <span style={{ display: 'inline-flex' }}>{Ico.pin(12)}</span>
-            <span>Visit or pin tasks to keep them here.</span>
+            <span>{t('sidebar.visitOrPin')}</span>
           </div>
         )}
 
@@ -612,7 +626,7 @@ export default function Sidebar({
           onMouseEnter={() => setRecentsHeadingHover(true)}
           onMouseLeave={() => setRecentsHeadingHover(false)}
         >
-          <span style={{ flex: 1 }}>RECENT TASKS</span>
+          <span style={{ flex: 1 }}>{t('sidebar.recentTasks')}</span>
           <button
             type="button"
             className="recents-viewall"
@@ -627,9 +641,9 @@ export default function Sidebar({
               transform: recentsHeadingHover ? 'translateX(0)' : 'translateX(2px)',
               pointerEvents: recentsHeadingHover ? 'auto' : 'none',
             }}
-            title="View all tasks"
+            title={t('sidebar.viewAll')}
           >
-            View all →
+            {t('sidebar.viewAll')}
           </button>
         </div>
         <div ref={recentsRef} className="scroll-clean" style={{

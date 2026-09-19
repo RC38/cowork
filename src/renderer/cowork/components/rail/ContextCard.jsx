@@ -5,6 +5,7 @@
 // (and legacy context paths).
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import Ico from '../Icons';
 import {
@@ -276,6 +277,7 @@ function ContextFileRow({ file, onOpen, onRequestDelete }) {
 }
 
 export function ContextCard({ project, conversationId, refreshKey = 0 }) {
+  const { t } = useTranslation();
   const [sections, setSections] = useState([]);
   const [projectFiles, setProjectFiles] = useState([]);
   const [sessionAttachments, setSessionAttachments] = useState([]);
@@ -506,12 +508,12 @@ export function ContextCard({ project, conversationId, refreshKey = 0 }) {
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center justify-between px-1 mb-1">
             <span className="font-display text-[10.5px] font-semibold uppercase tracking-widest text-ink-4">
-              Project files{projectFiles.length > 1 ? ` · ${projectFiles.length}` : ''}
+              {t('rail.projectFiles')}{projectFiles.length > 1 ? ` · ${projectFiles.length}` : ''}
             </span>
             <button
               type="button"
-              aria-label="Add files to this project"
-              title={uploadBusy ? 'Uploading…' : 'Add files to this project'}
+              aria-label={t('rail.addProjectFiles')}
+              title={uploadBusy ? t('rail.uploading') : t('rail.addProjectFiles')}
               disabled={uploadBusy}
               onClick={() => fileInputRef.current?.click()}
               className={clsx(
@@ -595,12 +597,12 @@ export function ContextCard({ project, conversationId, refreshKey = 0 }) {
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center justify-between px-1 mb-1">
             <span className="font-display text-[10.5px] font-semibold uppercase tracking-widest text-ink-4">
-              Task uploads{sessionAttachments.length > 1 ? ` · ${sessionAttachments.length}` : ''}
+              {t('rail.taskUploads')}{sessionAttachments.length > 1 ? ` · ${sessionAttachments.length}` : ''}
             </span>
             <button
               type="button"
-              aria-label="Attach files to this task"
-              title={taskUploadBusy ? 'Uploading…' : 'Attach files to this task'}
+              aria-label={t('rail.attachToTask')}
+              title={taskUploadBusy ? t('rail.uploading') : t('rail.attachToTask')}
               disabled={taskUploadBusy}
               onClick={() => taskUploadInputRef.current?.click()}
               className={clsx(
@@ -741,8 +743,8 @@ export function ContextCard({ project, conversationId, refreshKey = 0 }) {
                   vault scope (`section.scope`) is still the canonical
                   id used to save/edit; this is purely the heading
                   shown in the rail. */}
-              {section.scope === 'Project' ? 'Project memory'
-                : section.scope === 'Global' ? 'Global memory'
+              {section.scope === 'Project' ? t('rail.projectMemory')
+                : section.scope === 'Global' ? t('rail.globalMemory')
                 : section.scope}
             </span>
             {visible.map((entry) => (

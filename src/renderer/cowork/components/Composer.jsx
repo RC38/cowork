@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Ico from './Icons';
+import { useTranslation } from 'react-i18next';
 import {
   parseFences,
   fenceCtxAtParsed,
@@ -81,6 +82,8 @@ export default function Composer({
   // for the task being composed. When omitted, the row is hidden.
   onCreateProject = null,
 }) {
+  const { t } = useTranslation();
+  const actualPlaceholder = (placeholder === 'Hi Boss, how can I help you today?') ? t('home.placeholder') : (placeholder || t('home.placeholder'));
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
@@ -487,7 +490,7 @@ export default function Composer({
             <textarea
             ref={taRef}
             className="composer-textarea"
-            placeholder={placeholder}
+            placeholder={actualPlaceholder}
             disabled={disabled}
             value={value}
             onChange={(e) => { setValue(e.target.value); bumpTyping(); }}
@@ -881,7 +884,7 @@ export default function Composer({
                             setProjectSearch(e.target.value);
                             setProjectMenuError('');
                           }}
-                          placeholder={onCreateProject ? 'Search or create…' : 'Search projects…'}
+                          placeholder={onCreateProject ? '搜尋或建立…' : '搜尋專案…'}
                           disabled={projectMenuBusy}
                           spellCheck={false}
                           autoCapitalize="none"
@@ -921,8 +924,8 @@ export default function Composer({
                           color: 'var(--frost-600)',
                         }}>
                           {_projectSearchTrimmed
-                            ? `No project matches “${_projectSearchTrimmed}”.`
-                            : 'No projects yet.'}
+                            ? `沒有符合「${_projectSearchTrimmed}」的專案。`
+                            : '尚無專案。'}
                         </div>
                       ) : _filteredProjects.map((p) => (
                         <button
@@ -968,10 +971,10 @@ export default function Composer({
                           <span style={{ display: 'inline-flex', color: 'var(--primary-700)' }}>{Ico.plus(14)}</span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {projectMenuBusy
-                              ? 'Creating…'
+                              ? '建立中…'
                               : (_canCreateFromSearch
-                                  ? <>Create <strong style={{ fontWeight: 600 }}>“{_projectSearchTrimmed}”</strong></>
-                                  : 'New project')}
+                                  ? <>建立 <strong style={{ fontWeight: 600 }}>「{_projectSearchTrimmed}」</strong></>
+                                  : '新增專案')}
                           </span>
                         </button>
                       </>

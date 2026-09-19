@@ -268,7 +268,7 @@ function _streamResponse(text, { conversationId, projectName, projectPath, model
   const ctrl = new AbortController();
   (async () => {
     try {
-      const res = await fetch(`${BASE}/responses`, {
+      const res = await fetch(`${BASE}/responses/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -508,7 +508,7 @@ export async function fetchProjects() {
 }
 
 export async function createProject(name) {
-  return req('/projects', { method: 'POST', body: JSON.stringify({ name }) });
+  return req('/projects/', { method: 'POST', body: JSON.stringify({ name }) });
 }
 
 // Rename — backed by PATCH /api/v1/projects/{id}. Server moves the
@@ -1781,7 +1781,7 @@ export const MOCK_DATA = {
   ],
 
   settings: {
-    greeting: "Let's knock something off your list",
+    greeting: '讓我們開始完成一些任務吧',
     tone: 'balanced',
     defaultModel: 'claude-sonnet-4-6',
     autoPin: true,

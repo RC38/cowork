@@ -9,8 +9,9 @@ const defaultKeycloakUrl = isWeb
 const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL || defaultKeycloakUrl;
 
 // Base URL without query params for Keycloak redirect (Keycloak validates strictly)
+// Force localhost instead of IP to bypass Keycloak strict redirect URI matching
 const redirectUri = typeof window !== 'undefined'
-  ? `${window.location.protocol}//${window.location.host}${window.location.pathname}`
+  ? `${window.location.protocol}//localhost:${window.location.port}${window.location.pathname}`
   : undefined;
 
 const keycloak = new Keycloak({

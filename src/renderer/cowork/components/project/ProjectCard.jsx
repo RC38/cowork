@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Ico from '../Icons';
 import { fetchMemory, fetchArtifacts } from '../../api';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY    = 'var(--font-body)';
 const FONT_DISPLAY = 'var(--font-display)';
@@ -132,6 +133,7 @@ export function ProjectCard({
   onRenameSubmit,
   onRenameCancel,
 }) {
+  const { t } = useTranslation();
   const stats = useProjectStats(project, { tasks, scheduled });
   const summary = activitySummary(project, tasks);
   const active = isProjectActive(project, tasks);
@@ -252,8 +254,8 @@ export function ProjectCard({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onTogglePin?.(project, !pinned); }}
-          title={pinned ? 'Unpin project' : 'Pin project'}
-          aria-label={pinned ? 'Unpin project' : 'Pin project'}
+          title={pinned ? t('projects.unpinProject') : t('projects.pinProject')}
+          aria-label={pinned ? t('projects.unpinProject') : t('projects.pinProject')}
           aria-pressed={pinned}
           style={{
             width: 26, height: 26, borderRadius: 6,
@@ -280,8 +282,8 @@ export function ProjectCard({
             const rect = triggerRef.current?.getBoundingClientRect();
             onMenuOpen?.(project, rect);
           }}
-          title="Project menu"
-          aria-label="Project menu"
+          title={t('projects.projectMenu')}
+          aria-label={t('projects.projectMenu')}
           style={{
             width: 26, height: 26, borderRadius: 6,
             background: 'transparent', border: 0,
@@ -322,7 +324,7 @@ export function ProjectCard({
             fontFamily: FONT_BODY, fontSize: 13, lineHeight: 1.5,
             color: 'var(--ink-4)', fontStyle: 'italic',
           }}>
-            No activity yet
+            {t('projects.noActivity')}
           </span>
         )}
 
@@ -350,10 +352,10 @@ export function ProjectCard({
         borderTop: '1px solid var(--line)',
         paddingTop: 10,
       }}>
-        <D1Stat label="tasks" value={stats.tasks} />
-        <D1Stat label="mem"   value={stats.memories} />
-        <D1Stat label="sched" value={stats.schedules} />
-        <D1Stat label="art"   value={stats.artifacts} />
+        <D1Stat label={t('projects.tasks')} value={stats.tasks} />
+        <D1Stat label={t('projects.mem')}   value={stats.memories} />
+        <D1Stat label={t('projects.sched')} value={stats.schedules} />
+        <D1Stat label={t('projects.art')}   value={stats.artifacts} />
       </div>
     </div>
   );

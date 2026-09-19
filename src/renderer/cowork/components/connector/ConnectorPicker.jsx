@@ -11,6 +11,7 @@
 // can switch to /connectors/match for the natural-language path.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Ico from '../Icons';
 import { fetchConnectors } from '../../api';
 import { Modal } from '../ui/Modal';
@@ -95,7 +96,11 @@ function groupByCategory(connectors) {
   return entries;
 }
 
-function categoryLabel(key) {
+function categoryLabel(key, t) {
+  if (t) {
+    const translated = t(`connect.categories.${key}`, { defaultValue: '' });
+    if (translated) return translated;
+  }
   return CATEGORY_LABELS[key] || (key
     ? key.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : 'Other');
@@ -219,6 +224,7 @@ function ConnectorTile({ connector, onPick }) {
 }
 
 export default function ConnectorPicker({ open, onPick, onClose }) {
+  const { t } = useTranslation();
   const [connectors, setConnectors] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -307,7 +313,7 @@ export default function ConnectorPicker({ open, onPick, onClose }) {
             margin: 0,
             fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 600,
             letterSpacing: '-0.005em', color: 'var(--ink)',
-          }}>Connectors Directory</h2>
+          }}>{t('connect.directoryTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -343,8 +349,8 @@ export default function ConnectorPicker({ open, onPick, onClose }) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search connectors — gmail, postgres, slack…"
-              aria-label="Search connectors"
+              placeholder={t('connect.searchPlaceholder')}
+              aria-label={t('connect.searchPlaceholder')}
               spellCheck={false}
               autoCapitalize="none"
               autoCorrect="off"
@@ -368,7 +374,7 @@ export default function ConnectorPicker({ open, onPick, onClose }) {
           flexShrink: 0,
         }}>
           <SelectPill
-            label="Filter by"
+            label={t('connect.filterBy')}
             value={category}
             onChange={setCategory}
             // "All categories" sits at the top, then a hairline
@@ -377,20 +383,20 @@ export default function ConnectorPicker({ open, onPick, onClose }) {
             // the GTM-curated `availableCategories` order — that one
             // still drives section ordering inside the body.
             options={[
-              { id: 'all', label: 'All categories' },
+              { id: 'all', label: t('connect.allCategories') },
               { separator: true },
               ...[...availableCategories]
-                .map((cat) => ({ id: cat, label: categoryLabel(cat) }))
+                .map((cat) => ({ id: cat, label: categoryLabel(cat, t) }))
                 .sort((a, b) => a.label.localeCompare(b.label)),
             ]}
           />
           <SelectPill
-            label="Sort by"
+            label={t('connect.sortBy')}
             value={sortBy}
             onChange={setSortBy}
             options={[
-              { id: 'default', label: 'By category' },
-              { id: 'name',    label: 'Name (A–Z)' },
+              { id: 'default', label: t('connect.byCategory') },
+              { id: 'name',    label: t('connect.byName') },
             ]}
           />
         </div>
@@ -483,7 +489,7 @@ export default function ConnectorPicker({ open, onPick, onClose }) {
                     color: 'var(--ink-3)',
                     padding: '4px 2px 8px',
                   }}>
-                    {categoryLabel(cat)}
+                    {categoryLabel(cat, t)}
                     <span style={{
                       marginLeft: 8, fontWeight: 500,
                       color: 'var(--ink-4)',

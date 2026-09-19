@@ -33,6 +33,7 @@ import {
 } from '../components/collection';
 import { host } from '../../platform/host';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY    = "var(--font-body)";
 const FONT_DISPLAY = "var(--font-display)";
@@ -1095,6 +1096,7 @@ function ArtifactRow({ artifact, projects, onOpenViewer, onPublish: doPublish, o
 // ─── Empty state ─────────────────────────────────────────────────────────
 
 function EmptyState({ agentLabel = 'the agent' }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       flex: 1, minHeight: 360,
@@ -1103,10 +1105,10 @@ function EmptyState({ agentLabel = 'the agent' }) {
     }}>
       <span style={{ display: 'inline-flex', color: 'var(--ink-5)' }}>{Ico.sparkle(32)}</span>
       <div style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>
-        No artifacts yet
+        {t('artifacts.noArtifacts')}
       </div>
       <div style={{ fontFamily: FONT_BODY, fontSize: 13.5, color: 'var(--ink-3)', maxWidth: 380, textAlign: 'center' }}>
-        When {agentLabel} creates documents, dashboards, or code outputs they'll appear here.
+        {t('artifacts.emptyDescription', { agent: agentLabel || 'VeriAgent' })}
       </div>
     </div>
   );
@@ -1369,6 +1371,8 @@ export default function ArtifactsView({ artifacts: initial = EMPTY_ARTIFACTS, pr
   // denominator changes with the search.
   const publishedCount = visible.filter((a) => a.publishedUrl).length;
 
+  const { t } = useTranslation();
+
   return (
     // Background intentionally omitted so the gravity-field canvas
     // painted behind the React root shows through.
@@ -1377,8 +1381,8 @@ export default function ArtifactsView({ artifacts: initial = EMPTY_ARTIFACTS, pr
       display: 'flex', flexDirection: 'column',
     }}>
       <PageHeader
-        title="Live Artifacts"
-        subtitle={`Documents, dashboards, and code ${agentLabel} produces. Publish to share a live URL.`}
+        title={t('artifacts.title')}
+        subtitle={t('artifacts.subtitle', { agent: agentLabel || 'VeriAgent' })}
         // 20px below the subtitle text so the page reads with a
         // little air before the search-row begins. The 20px spacer
         // below the header still adds the standard between-section

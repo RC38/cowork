@@ -4,6 +4,7 @@ import Composer from '../components/Composer';
 import { OrbitMorph } from '../components/ui';
 import { host } from '../../platform/host';
 import { MINDS_BILLING_URL } from '../../lib/mindsUrls';
+import { useTranslation } from 'react-i18next';
 
 // ── Boot choreography ───────────────────────────────────────────────────
 //
@@ -40,8 +41,6 @@ import { MINDS_BILLING_URL } from '../../lib/mindsUrls';
 // config_ready=false) live in App.jsx so they fire once per app
 // session, not once per HomeView remount.
 
-const GREETING_FALLBACK = "Let's knock something off your list";
-
 // Per-phase durations. Keep these short enough that the whole
 // post-server choreography fits in ~3s — the user already waited
 // for the server, the intro shouldn't pile on.
@@ -75,7 +74,7 @@ function _ensureBootKeyframes() {
   _BOOT_KEYFRAMES_INJECTED = true;
 }
 
-function useBootPhase({ serverOnline, configReady, greeting, skipIntro = false }) {
+function useBootPhase({ serverOnline, configReady, greetingText, skipIntro = false }) {
   // Phases: loading → collapsing → traveling → morphing → typing →
   //         settling → idle.
   //
@@ -126,14 +125,13 @@ function useBootPhase({ serverOnline, configReady, greeting, skipIntro = false }
   // 'typing' — per-char timer + tail pause + advance to 'settling'.
   useEffect(() => {
     if (phase !== 'typing') return undefined;
-    const target = greeting || GREETING_FALLBACK;
-    if (typedCount >= target.length) {
+    if (typedCount >= greetingText.length) {
       const t = setTimeout(() => setPhase('settling'), TYPE_TAIL_MS);
       return () => clearTimeout(t);
     }
     const t = setTimeout(() => setTypedCount((n) => n + 1), TYPE_PER_CHAR_MS);
     return () => clearTimeout(t);
-  }, [phase, typedCount, greeting]);
+  }, [phase, typedCount, greetingText]);
 
   useEffect(() => {
     if (phase !== 'typing') setTypedCount(0);
@@ -148,7 +146,6 @@ function useBootPhase({ serverOnline, configReady, greeting, skipIntro = false }
 
   return { phase, typedCount };
 }
-
 
 // Measure how far the orb's natural rest position sits from the
 // horizontal centre of the home view's CONTENT AREA (not the window
@@ -187,7 +184,6 @@ function useOrbCenterOffset(orbRef, containerRef) {
   }, [orbRef, containerRef]);
   return offset;
 }
-
 
 function ActiveList({ tasks, onSelect, onClear }) {
   if (!tasks.length) return null;
@@ -241,11 +237,11 @@ function ActiveList({ tasks, onSelect, onClear }) {
   );
 }
 
-
 export default function HomeView({
-  greeting, showDots,
+  greeting: _greeting,
+  projects,
   activeTasks, onSelectTask, onClearActive,
-  onSend, project, onProjectChange, model, onModelChange, projects, models,
+  onSend, project, onProjectChange, model, onModelChange, models,
   attachments, connectors, onAttachFiles, onRemoveAttachment,
   disabledConnections = [],
   onUpdateConnectorMute,
@@ -255,16 +251,33 @@ export default function HomeView({
   skipIntro = false,
   agentLabel,
 }) {
+  const { t } = useTranslation();
+  const GREETING_FALLBACK = t('home.greeting');
+  // Use the host's configured greeting if it handed us one, otherwise
+  // our hard-coded default. A falsy `greeting` (empty string) means the
+  // host wants silence, so don't apply the fallback there. Only use
+  // the fallback if the host has provided a falsy greeting and we
+  // have no other information.
+  // Wait, if _greeting comes from the backend default (the hard-coded fallback),
+  // we should override it with the localized greeting. Match both the new Chinese
+  // default and the legacy English one so pre-existing persisted settings still
+  // resolve to the localized text.
+  const isDefaultBackendGreeting =
+    _greeting === '讓我們開始完成一些任務吧' ||
+    _greeting === "Let's knock something off your list";
+  const greetingText = (!_greeting || isDefaultBackendGreeting) ? GREETING_FALLBACK : _greeting;
+
   useEffect(() => { _ensureBootKeyframes(); }, []);
 
-  const greetingText = greeting || GREETING_FALLBACK;
   const blocked = configReady === false;
 
   const { phase, typedCount } = useBootPhase({
     serverOnline, configReady,
-    greeting: greetingText,
+    greetingText,
     skipIntro,
   });
+
+  const greetingTextDisplay = _greeting || GREETING_FALLBACK;
 
   // Idle-phase orb crossfade — driven by composer typing + active
   // tasks. Two stacked OrbitMorph instances (idle + thinking) with

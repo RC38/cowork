@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import Ico from './components/Icons';
 import { pickConnectWelcome } from './lib/connectWelcomes';
 // OnboardingShell removed — antontron's renderer handles terms/install/
@@ -667,8 +668,10 @@ export default function App() {
 }
 
 function AppCore() {
+  const { t } = useTranslation();
+
   const [settings, setSettings] = useState({
-    greeting: "Let's knock something off your list",
+    greeting: '讓我們開始完成一些任務吧',
     tone: 'balanced',
     defaultModel: 'claude-sonnet-4-6',
     autoPin: true,
@@ -1019,11 +1022,12 @@ function AppCore() {
   // Theme (light | dark) — persisted in localStorage so the choice
   // survives reloads. The animated background canvas (gravity-field)
   // and the body's bg colour both follow this value.
+  // 預設明亮風格（本部署指定）；localStorage 中使用者選過的優先。
   const [theme, setTheme] = useState(() => {
     try {
       const saved = window.localStorage.getItem('anton.theme');
-      return saved === 'light' || saved === 'dark' ? saved : 'dark';
-    } catch { return 'dark'; }
+      return saved === 'light' || saved === 'dark' ? saved : 'light';
+    } catch { return 'light'; }
   });
   // Skin — a second styling axis, orthogonal to light/dark. Each entry
   // in the SKINS registry (lib/skins.ts) maps to a token-override
@@ -3669,10 +3673,10 @@ function AppCore() {
 
       <ConfirmModal
         open={pendingDeleteTaskId != null}
-        title="Delete this task?"
-        message="The conversation history and any per-task scratchpad cells will be removed. This can't be undone."
-        confirmLabel="Delete"
-        cancelLabel="Keep"
+        title={t('confirm.deleteTaskTitle')}
+        message={t('confirm.deleteTaskMessage')}
+        confirmLabel={t('confirm.delete')}
+        cancelLabel={t('confirm.keep')}
         destructive
         onClose={() => setPendingDeleteTaskId(null)}
         onConfirm={async () => {
@@ -3684,10 +3688,10 @@ function AppCore() {
 
       <ConfirmModal
         open={pendingDeleteTurn != null}
-        title="Delete this exchange?"
-        message={`This removes both your question and ${agentLabel}'s response from the conversation. Any scratchpad cells, artifacts, or memory writes produced as part of this turn stay on disk. This can't be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Keep"
+        title={t('confirm.deleteTurnTitle')}
+        message={t('confirm.deleteTurnMessage', { agent: agentLabel })}
+        confirmLabel={t('confirm.delete')}
+        cancelLabel={t('confirm.keep')}
         destructive
         onClose={() => setPendingDeleteTurn(null)}
         onConfirm={async () => {
@@ -3699,10 +3703,10 @@ function AppCore() {
 
       <ConfirmModal
         open={pendingDeleteProject != null}
-        title={`Delete project "${pendingDeleteProject?.name}"?`}
-        message="All conversations, scratchpad output, memory, and artifacts under this project will be removed from disk. This can't be undone."
-        confirmLabel="Delete project"
-        cancelLabel="Keep"
+        title={t('confirm.deleteProjectTitle', { name: pendingDeleteProject?.name })}
+        message={t('confirm.deleteProjectMessage')}
+        confirmLabel={t('confirm.deleteProjectButton')}
+        cancelLabel={t('confirm.keep')}
         destructive
         onClose={() => setPendingDeleteProject(null)}
         onConfirm={async () => {

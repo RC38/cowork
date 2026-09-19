@@ -30,6 +30,7 @@ import {
   revealProjectInFinder,
   fetchMemory, fetchArtifacts,
 } from '../api';
+import { useTranslation } from 'react-i18next';
 
 const FONT_BODY    = 'var(--font-body)';
 const FONT_DISPLAY = 'var(--font-display)';
@@ -140,34 +141,27 @@ function activitySummaryFor(project, tasks) {
 // "+ Schedule task" and the rest of the page-header CTAs. Keeps the
 // type, height, padding and accent-glow consistent across pages.
 function NewProjectButton({ onClick }) {
+  const { t } = useTranslation();
   return (
     <button type="button" className="btn-primary proj-new-action" onClick={onClick}>
-      {Ico.plus(14)} New project
+      {Ico.plus(14)} {t('projects.newProject')}
     </button>
   );
 }
 
-// Sort options for the projects collection. Kept here (and not in
-// the kit) because the choices are page-specific.
-const SORT_OPTIONS = [
-  { id: 'recent',       label: 'Recent' },
-  { id: 'name',         label: 'Name' },
-  { id: 'most-active',  label: 'Most active' },
-  { id: 'least-active', label: 'Least active' },
-];
-
 function ProjectsCounts({ search, total, filtered, pinnedCount }) {
+  const { t } = useTranslation();
   const filterActive = (search || '').trim().length > 0;
   const countText = filterActive
-    ? `Showing ${filtered} of ${total}`
-    : `${total} ${total === 1 ? 'project' : 'projects'}`;
+    ? t('projects.showingOf', { total, filtered })
+    : t('projects.count', { count: total });
   return (
     <>
       {countText}
       {pinnedCount > 0 && (
         <>
           {' · '}
-          <span style={{ color: 'var(--accent)' }}>{pinnedCount} pinned</span>
+          <span style={{ color: 'var(--accent)' }}>{pinnedCount} {t('projects.pinned')}</span>
         </>
       )}
     </>
@@ -445,6 +439,7 @@ function NewProjectCard({ onCreate, creating, onCreatingChange }) {
 const LIST_GRID = '3fr 1.2fr 64px 64px 64px 64px 64px 36px';
 
 function ListHeader() {
+  const { t } = useTranslation();
   const Cell = ({ children, align }) => (
     <div style={{
       fontFamily: FONT_MONO, fontSize: 10.5,
@@ -459,13 +454,13 @@ function ListHeader() {
       padding: '10px 14px',
       borderBottom: '1px solid var(--line)',
     }}>
-      <Cell>Name</Cell>
-      <Cell>Last activity</Cell>
-      <Cell align="right">Tasks</Cell>
-      <Cell align="right">Active</Cell>
-      <Cell align="right">Memories</Cell>
-      <Cell align="right">Sched.</Cell>
-      <Cell align="right">Artifacts</Cell>
+      <Cell>{t('projects.name')}</Cell>
+      <Cell>{t('projects.lastActivity')}</Cell>
+      <Cell align="right">{t('projects.tasks')}</Cell>
+      <Cell align="right">{t('projects.active')}</Cell>
+      <Cell align="right">{t('projects.mem')}</Cell>
+      <Cell align="right">{t('projects.sched')}</Cell>
+      <Cell align="right">{t('projects.art')}</Cell>
       <Cell />
     </div>
   );
@@ -691,6 +686,7 @@ function ListRow({
 // ─── Empty / loading ─────────────────────────────────────────────────────
 
 function EmptyState({ onNewProject }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       flex: 1, minHeight: 360,
@@ -699,10 +695,10 @@ function EmptyState({ onNewProject }) {
     }}>
       <span style={{ display: 'inline-flex', color: 'var(--ink-4)' }}>{Ico.folder(32)}</span>
       <div style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>
-        No projects yet
+        {t('projects.noProjects')}
       </div>
       <div style={{ fontFamily: FONT_BODY, fontSize: 13.5, color: 'var(--ink-3)', maxWidth: 360, textAlign: 'center' }}>
-        Create your first project to start grouping conversations and outputs.
+        {t('projects.emptyDescription')}
       </div>
       <NewProjectButton onClick={onNewProject} />
     </div>
@@ -796,6 +792,7 @@ function ProjectDetail({
   // ScheduledView grid uses.
   onOpenSchedule,
 }) {
+  const { t } = useTranslation();
   const projectTasks = (tasks || [])
     .filter((t) => t.projectName === project.name || t.projectPath === project.path)
     .sort((a, b) => timestampOfProject(b, []) - timestampOfProject(a, []) || 0);
@@ -887,7 +884,7 @@ function ProjectDetail({
             minWidth: 0, flex: '1 1 0',
             overflow: 'hidden',
           }}>
-            <Crumb label="Projects" onClick={onShowAll} title="All projects" />
+            <Crumb label={t('sidebar.projects')} onClick={onShowAll} title={t('sidebar.allProjects')} />
             <CrumbSep />
             <div
               onMouseEnter={() => setTitleHover(true)}
@@ -1097,8 +1094,9 @@ export default function ProjectsView({
   // Forwarded to ProjectDetail's rail Scheduled Tasks card —
   // clicking a row routes to the schedule detail page.
   onOpenSchedule,
-  agentLabel = 'the agent',
+  agentLabel = 'VeriAgent',
 }) {
+  const { t } = useTranslation();
   const { pinned, togglePin } = usePinnedProjects();
   const { isMobile } = useBreakpoint();
   const [view, setView] = useState(() =>
@@ -1259,6 +1257,18 @@ export default function ProjectsView({
     );
   }
 
+  const sortOptions = [
+    { id: 'recent',       label: t('projects.sortRecent') },
+    { id: 'name',         label: t('projects.sortName') },
+    { id: 'most-active',  label: t('projects.sortMostActive') },
+    { id: 'least-active', label: t('projects.sortLeastActive') },
+  ];
+
+  const viewOptions = [
+    { id: 'grid', label: t('projects.viewGrid'), icon: (n) => Ico.grid(n) },
+    { id: 'list', label: t('projects.viewList'), icon: (n) => Ico.list(n) },
+  ];
+
   return (
     // Background intentionally omitted so the gravity-field canvas
     // painted behind the React root shows through. Earlier this was
@@ -1268,8 +1278,8 @@ export default function ProjectsView({
       display: 'flex', flexDirection: 'column',
     }}>
       <PageHeader
-        title="Projects"
-        subtitle={`Workspaces ${agentLabel} uses to group conversations, memory, and outputs.`}
+        title={t('sidebar.projects')}
+        subtitle={t('projects.subtitle', { agent: agentLabel || 'VeriAgent' })}
         actions={<NewProjectButton onClick={handleNewProject} />}
         // Bake the breathing room into the header itself rather than a
         // sibling spacer. The previous 18px spacer div collapsed in
@@ -1287,11 +1297,11 @@ export default function ProjectsView({
             value={search}
             onChange={setSearch}
             inputRef={searchRef}
-            placeholder="Search projects"
+            placeholder={t('projects.searchPlaceholder')}
           />
         }
-        sort={<SortPill value={sort} onChange={setSort} options={SORT_OPTIONS} />}
-        view={<span className="proj-view-toggle"><ViewToggle value={view} onChange={setView} /></span>}
+        sort={<SortPill value={sort} onChange={setSort} options={sortOptions} label={t('projects.sort')} />}
+        view={<span className="proj-view-toggle"><ViewToggle value={view} onChange={setView} options={viewOptions} /></span>}
         counts={
           <ProjectsCounts
             search={search}
@@ -1364,7 +1374,7 @@ export default function ProjectsView({
           >
             <span style={{ display: 'inline-flex' }}>{Ico.plus(16)}</span>
             <span style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: 500 }}>
-              New project
+              {t('projects.newProject')}
             </span>
           </button>
         </div>
