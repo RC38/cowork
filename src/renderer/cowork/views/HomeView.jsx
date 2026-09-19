@@ -244,7 +244,7 @@ export default function HomeView({
   disabledConnections = [],
   onUpdateConnectorMute,
   onCreateProject,
-  configReady, configError,
+  configReady, configError, onOpenSettings,
   serverOnline = false, onShowServerHelp,
   skipIntro = false,
   agentLabel,
@@ -524,6 +524,14 @@ export default function HomeView({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-strong)' }}>連接供應商以開始對話</div>
                 <div style={{ fontSize: 12.5, color: 'var(--frost-700)', marginTop: 3 }}>在「設定」中填入自己的供應商金鑰（Anthropic、OpenAI 或任何 OpenAI 相容端點）。</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={onOpenSettings}
+                  style={{ background: 'transparent', color: 'var(--primary-700)', border: '1px solid var(--primary-700)' }}
+                >設定</button>
               </div>
             </div>
           ) : (
