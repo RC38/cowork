@@ -1429,14 +1429,14 @@ export default function ChatView({
                         fontSize: 15,
                         letterSpacing: '0.02em',
                         color: T.ink,
-                      }}>Connect a provider to start chatting</div>
+                      }}>連接供應商以開始對話</div>
                       <div style={{
                         fontFamily: FONT_BODY,
                         fontSize: 13.5,
                         lineHeight: 1.55,
                         color: T.ink2,
                       }}>
-                        Cowork needs an LLM provider. Subscribe with MindsHub for managed access, or add your own provider key in Settings.
+                        Cowork 需要一個 LLM 供應商。訂閱 MindsHub 取得託管存取，或在「設定」中加入自己的供應商金鑰。
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                         <button
@@ -1458,7 +1458,7 @@ export default function ChatView({
                             fontWeight: 500,
                             cursor: 'pointer',
                           }}
-                        >Subscribe with MindsHub</button>
+                        >訂閱 MindsHub</button>
                         <button
                           type="button"
                           onClick={() => onOpenSettings?.()}
@@ -1473,7 +1473,7 @@ export default function ChatView({
                             fontWeight: 500,
                             cursor: 'pointer',
                           }}
-                        >Open Settings</button>
+                        >開啟設定</button>
                       </div>
                     </div>
                   </AnswerTurn>

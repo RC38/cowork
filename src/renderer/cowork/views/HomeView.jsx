@@ -524,21 +524,21 @@ export default function HomeView({
                 background: 'var(--primary-50)', color: 'var(--primary-700)', flexShrink: 0,
               }}>{Ico.key(18)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-strong)' }}>Connect a provider to start chatting</div>
-                <div style={{ fontSize: 12.5, color: 'var(--frost-700)', marginTop: 3 }}>Subscribe with MindsHub for managed access, or bring your own provider key (Anthropic, OpenAI, or any OpenAI-compatible endpoint) in Settings.</div>
+                <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-strong)' }}>連接供應商以開始對話</div>
+                <div style={{ fontSize: 12.5, color: 'var(--frost-700)', marginTop: 3 }}>訂閱 MindsHub 取得託管存取，或在「設定」中填入自己的供應商金鑰（Anthropic、OpenAI 或任何 OpenAI 相容端點）。</div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
                   type="button"
                   className="btn-primary"
                   onClick={() => host.openExternal(MINDS_BILLING_URL)}
-                >Subscribe</button>
+                >訂閱 MindsHub</button>
                 <button
                   type="button"
                   className="btn-primary"
                   onClick={onOpenSettings}
                   style={{ background: 'transparent', color: 'var(--primary-700)', border: '1px solid var(--primary-700)' }}
-                >Settings</button>
+                >設定</button>
               </div>
             </div>
           ) : (
