@@ -430,10 +430,9 @@ export default function Sidebar({
             }}
             title="回到風控儀表板"
             aria-label="回到風控儀表板"
-            style={{ WebkitAppRegion: 'no-drag', width: 'auto', padding: '0 10px', gap: 6, fontSize: 13 }}
+            style={{ WebkitAppRegion: 'no-drag' }}
           >
             {Ico.grid(15)}
-            <span>回到風控儀表板</span>
           </button>
           <div className="anton-sidebar__chrome-buttons">
             {/* Collapse button — always mounted so the search icon
