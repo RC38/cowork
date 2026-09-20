@@ -15,7 +15,7 @@
 //   • trash     — appears on row hover, opens the existing delete
 //                 confirm modal via the parent's onDeleteTask.
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import i18n from 'i18next';
 import { useTranslation } from 'react-i18next';
 import Ico from '../components/Icons';
@@ -31,11 +31,13 @@ const FONT_BODY    = 'var(--font-body)';
 const FONT_DISPLAY = 'var(--font-display)';
 const FONT_MONO    = 'var(--font-mono)';
 
-// 24px dot · title (2.4fr) · project (1.2fr) · updated (110px) ·
-// trash slot (28px). Fixed-width slots stop the column stops from
-// shifting between hover/non-hover so the trash icon doesn't
-// shove the timestamp left when it appears.
-const LIST_GRID = '24px minmax(0, 2.4fr) minmax(0, 1.2fr) 110px 28px';
+// 24px dot · title (2.4fr) · project (1.2fr) · select checkbox (30px) ·
+// updated (110px) · trash slot (28px). Fixed-width slots stop the column
+// stops from shifting between hover/non-hover so the trash icon doesn't
+// shove the timestamp left when it appears. The checkbox column sits next
+// to Updated; schedule group rows render an empty placeholder there since
+// a whole schedule isn't individually deletable from this list.
+const LIST_GRID = '24px minmax(0, 2.4fr) minmax(0, 1.2fr) 30px 110px 28px';
 
 function relAge(input) {
   if (!input) return '—';
@@ -49,7 +51,34 @@ function relAge(input) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function ListHeaderRow() {
+// Reusable select checkbox used in the header (select-all) and each
+// lone-task row. The wrapper stops click/mousedown propagation so
+// toggling it never routes the parent row into chat or schedule detail.
+function SelectCheckbox({ checked, indeterminate = false, onChange, label }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !!indeterminate && !checked;
+  }, [indeterminate, checked]);
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      style={{ display: 'flex', alignItems: 'center' }}
+    >
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        aria-label={label}
+        title={label}
+        style={{ width: 15, height: 15, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
+      />
+    </div>
+  );
+}
+
+function ListHeaderRow({ allSelected = false, someSelected = false, onToggleAll }) {
   const { t } = useTranslation();
   const Cell = ({ children, align }) => (
     <div style={{
@@ -68,6 +97,14 @@ function ListHeaderRow() {
       <Cell />
       <Cell>{t('tasks.titleCol')}</Cell>
       <Cell>{t('tasks.projectCol')}</Cell>
+      {/* Select-all checkbox — checked when every visible lone task is
+          selected, indeterminate when only some are. */}
+      <SelectCheckbox
+        checked={allSelected}
+        indeterminate={someSelected}
+        onChange={onToggleAll}
+        label={t('tasks.selectAll')}
+      />
       <Cell>{t('tasks.updatedCol')}</Cell>
       <Cell />
     </div>
@@ -79,6 +116,8 @@ function TaskRow({
   onOpen,
   onOpenProject,
   onDelete,
+  selected = false,
+  onToggleSelect,
 }) {
   const { t } = useTranslation();
   const [hover, setHover] = useState(false);
@@ -180,6 +219,14 @@ function TaskRow({
           ) : projectName
         ) : <span style={{ color: 'var(--ink-5)' }}>—</span>}
       </div>
+
+      {/* Select checkbox — sits next to Updated; toggling it never
+          routes the row into chat (the wrapper stops propagation). */}
+      <SelectCheckbox
+        checked={selected}
+        onChange={() => onToggleSelect?.(task.id)}
+        label={t('tasks.selectTask')}
+      />
 
       {/* Updated */}
       <div style={{
@@ -336,6 +383,10 @@ function ScheduleGroupRow({
         ) : <span style={{ color: 'var(--ink-5)' }}>—</span>}
       </div>
 
+      {/* Empty placeholder for the select-checkbox column — schedule
+          group rows aren't individually selectable from this list. */}
+      <div />
+
       <div style={{
         fontFamily: FONT_MONO, fontSize: 11,
         color: 'var(--ink-4)', letterSpacing: '0.04em',
@@ -390,13 +441,34 @@ export default function TasksView({
   onOpenProject,
   onOpenSchedule,
   onDeleteTask,
+  onDeleteTasks,
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recent');
   const [projectFilter, setProjectFilter] = useState('all');
+  // Multi-select for batch delete. A Set of task ids the user has ticked.
+  // Group (schedule) rows are not selectable — only lone-task rows.
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const searchRef = useRef(null);
   useCollectionShortcut(searchRef);
+
+  // Prune any selected ids that have disappeared from the tasks list
+  // (e.g. after a confirmed batch delete removes them). Keeps selection in
+  // sync without an explicit "clear" callback, and preserves the user's
+  // picks if they cancel the confirm modal.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const present = new Set(tasks.map((t) => t.id));
+      let changed = false;
+      const next = new Set();
+      for (const id of prev) {
+        if (present.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [tasks]);
 
   // Sort options are built here (not at module scope) so their labels
   // flow through i18n.
@@ -517,6 +589,47 @@ export default function TasksView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grouped, search, sort, projectFilter, schedulesById]);
 
+  // Ids of the lone-task rows currently visible (after filtering/sorting).
+  // Group rows are excluded — they can't be individually selected. Drives
+  // the select-all checkbox state in the header.
+  const visibleTaskIds = useMemo(() => {
+    const ids = [];
+    for (const row of visible) if (row.kind === 'task') ids.push(row.task.id);
+    return ids;
+  }, [visible]);
+
+  const selectedVisibleCount = useMemo(() => {
+    let n = 0;
+    for (const id of visibleTaskIds) if (selectedIds.has(id)) n += 1;
+    return n;
+  }, [visibleTaskIds, selectedIds]);
+
+  const allSelected = visibleTaskIds.length > 0 && selectedVisibleCount === visibleTaskIds.length;
+  const someSelected = selectedVisibleCount > 0 && !allSelected;
+
+  // Toggle a single row's selection.
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Header select-all: when everything visible is selected, clear the
+  // visible picks; otherwise add every visible lone-task id.
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        for (const id of visibleTaskIds) next.delete(id);
+      } else {
+        for (const id of visibleTaskIds) next.add(id);
+      }
+      return next;
+    });
+  };
+
   // Project filter dropdown options. "All projects" + every project
   // present in the projects list, sorted by name. We only show
   // projects that actually have at least one task to keep the
@@ -579,6 +692,26 @@ export default function TasksView({
               />
             </>
           }
+          right={
+            selectedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={() => onDeleteTasks?.([...selectedIds])}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  height: 30, padding: '0 12px', borderRadius: 8,
+                  fontFamily: FONT_BODY, fontSize: 12.5, fontWeight: 600,
+                  color: 'var(--danger)',
+                  background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+                  cursor: 'pointer',
+                }}
+              >
+                {Ico.trash(14)}
+                {t('tasks.deleteSelected', { count: selectedIds.size })}
+              </button>
+            )
+          }
           counts={
             <>
               {(search || '').trim().length > 0 || projectFilter !== 'all'
@@ -593,7 +726,11 @@ export default function TasksView({
         <EmptyState />
       ) : (
         <div style={{ padding: '8px 28px 28px' }}>
-          <ListHeaderRow />
+          <ListHeaderRow
+            allSelected={allSelected}
+            someSelected={someSelected}
+            onToggleAll={toggleAll}
+          />
           {visible.map((row) => {
             if (row.kind === 'task') {
               return (
@@ -604,6 +741,8 @@ export default function TasksView({
                   onOpen={(task) => onOpenTask?.(task.id)}
                   onOpenProject={onOpenProject}
                   onDelete={(id) => onDeleteTask?.(id)}
+                  selected={selectedIds.has(row.task.id)}
+                  onToggleSelect={toggleSelect}
                 />
               );
             }

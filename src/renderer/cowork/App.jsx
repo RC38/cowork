@@ -703,6 +703,9 @@ function AppCore() {
   // Pending delete confirm — task id whose delete is awaiting user
   // confirmation in the modal. null = no modal.
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState(null);
+  // Batch variant: array of task ids from the Tasks view multi-select,
+  // or null when no batch confirm modal is open.
+  const [pendingDeleteTaskIds, setPendingDeleteTaskIds] = useState(null);
   // Pending project delete — same pattern but for entire projects.
   const [pendingDeleteProject, setPendingDeleteProject] = useState(null);
 
@@ -2910,6 +2913,12 @@ function AppCore() {
     console.log('[handleDeleteTask] open confirm for', taskId);
     setPendingDeleteTaskId(taskId);
   };
+  // Batch delete from the Tasks view multi-select: same two-step pattern,
+  // but the modal carries an array of ids and confirms them all at once.
+  const handleBatchDeleteTasks = (taskIds) => {
+    if (!Array.isArray(taskIds) || taskIds.length === 0) return;
+    setPendingDeleteTaskIds([...taskIds]);
+  };
   const performDeleteTask = async (taskId) => {
     if (!taskId) return;
     // eslint-disable-next-line no-console
@@ -3495,6 +3504,7 @@ function AppCore() {
               setRoute('schedule-detail');
             }}
             onDeleteTask={handleDeleteTask}
+            onDeleteTasks={handleBatchDeleteTasks}
           />
         )}
 
@@ -3654,6 +3664,21 @@ function AppCore() {
           const id = pendingDeleteTaskId;
           setPendingDeleteTaskId(null);
           await performDeleteTask(id);
+        }}
+      />
+
+      <ConfirmModal
+        open={pendingDeleteTaskIds != null}
+        title={t('confirm.deleteTasksTitle', { count: pendingDeleteTaskIds?.length || 0 })}
+        message={t('confirm.deleteTasksMessage')}
+        confirmLabel={t('confirm.delete')}
+        cancelLabel={t('confirm.keep')}
+        destructive
+        onClose={() => setPendingDeleteTaskIds(null)}
+        onConfirm={async () => {
+          const ids = pendingDeleteTaskIds;
+          setPendingDeleteTaskIds(null);
+          if (Array.isArray(ids)) await Promise.all(ids.map((id) => performDeleteTask(id)));
         }}
       />
 
