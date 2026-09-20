@@ -5,7 +5,7 @@
 // call onConfirm(payload) from inside this modal. Esc and backdrop
 // click both dismiss without confirming.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function ConfirmModal({
   open,
@@ -23,16 +23,30 @@ export function ConfirmModal({
   onConfirm,
   onClose,
 }) {
+  const cancelRef = useRef(null);
+
+  // Destructive modals are the dangerous ones. Never let a stray Enter
+  // keypress confirm them: focus the CANCEL button so the default action of
+  // pressing Enter is "keep", and skip the global Enter shortcut below.
+  // Confirming still works via an explicit click, or Tab to the confirm
+  // button + Enter (native button semantics).
+  useEffect(() => {
+    if (open && destructive) cancelRef.current?.focus();
+  }, [open, destructive]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
       if (busy) return;
       if (e.key === 'Escape') onClose?.();
-      if (e.key === 'Enter') onConfirm?.();
+      // Enter confirms only for non-destructive modals. For destructive ones,
+      // a global Enter would confirm from anywhere on the page — exactly how an
+      // accidental keypress can wipe data. Require an explicit click instead.
+      if (e.key === 'Enter' && !destructive) onConfirm?.();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, onClose, onConfirm]);
+  }, [open, busy, onClose, onConfirm, destructive]);
 
   if (!open) return null;
 
@@ -82,6 +96,7 @@ export function ConfirmModal({
           display: 'flex', justifyContent: 'flex-end', gap: 8,
         }}>
           <button
+            ref={cancelRef}
             type="button"
             onClick={onClose}
             disabled={busy}
@@ -102,7 +117,7 @@ export function ConfirmModal({
             type="button"
             onClick={() => { if (!busy) onConfirm?.(); }}
             disabled={busy}
-            autoFocus
+            autoFocus={!destructive}
             style={{
               all: 'unset', cursor: busy ? 'progress' : 'pointer',
               padding: '8px 14px', borderRadius: 8,
