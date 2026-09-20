@@ -16,6 +16,8 @@
 //                 confirm modal via the parent's onDeleteTask.
 
 import { useMemo, useRef, useState } from 'react';
+import i18n from 'i18next';
+import { useTranslation } from 'react-i18next';
 import Ico from '../components/Icons';
 import {
   PageHeader,
@@ -29,12 +31,6 @@ const FONT_BODY    = 'var(--font-body)';
 const FONT_DISPLAY = 'var(--font-display)';
 const FONT_MONO    = 'var(--font-mono)';
 
-const SORT_OPTIONS = [
-  { id: 'recent',  label: 'Recent' },
-  { id: 'name',    label: 'Name (A–Z)' },
-  { id: 'project', label: 'Project' },
-];
-
 // 24px dot · title (2.4fr) · project (1.2fr) · updated (110px) ·
 // trash slot (28px). Fixed-width slots stop the column stops from
 // shifting between hover/non-hover so the trash icon doesn't
@@ -46,14 +42,15 @@ function relAge(input) {
   const ts = typeof input === 'number' ? input : Date.parse(input);
   if (!Number.isFinite(ts)) return '—';
   const diff = Date.now() - ts;
-  if (diff < 60_000)         return 'just now';
-  if (diff < 3_600_000)      return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000)     return `${Math.floor(diff / 3_600_000)}h ago`;
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  if (diff < 60_000)         return i18n.t('tasks.justNow');
+  if (diff < 3_600_000)      return i18n.t('tasks.minutesAgo', { count: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000)     return i18n.t('tasks.hoursAgo', { count: Math.floor(diff / 3_600_000) });
+  if (diff < 7 * 86_400_000) return i18n.t('tasks.daysAgo', { count: Math.floor(diff / 86_400_000) });
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function ListHeaderRow() {
+  const { t } = useTranslation();
   const Cell = ({ children, align }) => (
     <div style={{
       fontFamily: FONT_MONO, fontSize: 10.5,
@@ -69,9 +66,9 @@ function ListHeaderRow() {
       borderBottom: '1px solid var(--line)',
     }}>
       <Cell />
-      <Cell>Title</Cell>
-      <Cell>Project</Cell>
-      <Cell>Updated</Cell>
+      <Cell>{t('tasks.titleCol')}</Cell>
+      <Cell>{t('tasks.projectCol')}</Cell>
+      <Cell>{t('tasks.updatedCol')}</Cell>
       <Cell />
     </div>
   );
@@ -83,6 +80,7 @@ function TaskRow({
   onOpenProject,
   onDelete,
 }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(false);
   const stop = (e) => { e.stopPropagation(); };
 
@@ -124,7 +122,7 @@ function TaskRow({
         <span
           aria-hidden
           className={isActive ? 'pulse-dot' : undefined}
-          title={isActive ? 'Running' : ''}
+          title={isActive ? t('tasks.running') : ''}
           style={{
             width: 8, height: 8, borderRadius: 99,
             background: dotColor,
@@ -139,7 +137,7 @@ function TaskRow({
           fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 600,
           color: 'var(--ink)', letterSpacing: '-0.005em',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{task.title || 'Untitled task'}</div>
+        }}>{task.title || t('tasks.untitledTask')}</div>
         {task.subtitle && task.subtitle !== updated && (
           <div style={{
             fontFamily: FONT_BODY, fontSize: 11.5, color: 'var(--ink-4)',
@@ -161,7 +159,7 @@ function TaskRow({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onOpenProject(projectMatch); }}
-              title={`Open ${projectMatch.name}`}
+              title={t('tasks.openProject', { name: projectMatch.name })}
               style={{
                 all: 'unset', cursor: 'pointer',
                 color: 'var(--ink-2)',
@@ -201,8 +199,8 @@ function TaskRow({
         <button
           type="button"
           onClick={() => onDelete?.(task.id)}
-          aria-label="Delete task"
-          title="Delete task"
+          aria-label={t('tasks.deleteTask')}
+          title={t('tasks.deleteTask')}
           className="icon-btn"
           style={{
             width: 26, height: 26, borderRadius: 6,
@@ -228,6 +226,7 @@ function ScheduleGroupRow({
   schedule, runs = [], projects = [],
   onOpenSchedule, onOpenLatest, onOpenProject,
 }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(false);
   const stop = (e) => { e.stopPropagation(); };
 
@@ -277,7 +276,7 @@ function ScheduleGroupRow({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <span aria-hidden title="Scheduled task" style={{
+        <span aria-hidden title={t('tasks.scheduledTask')} style={{
           width: 8, height: 8, borderRadius: 99,
           background: isAnyActive ? 'var(--success)' : 'var(--accent)',
           boxShadow: isAnyActive ? '0 0 6px var(--success-glow)' : '0 0 6px var(--accent-glow)',
@@ -290,7 +289,7 @@ function ScheduleGroupRow({
           color: 'var(--ink)', letterSpacing: '-0.005em',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           minWidth: 0,
-        }}>{schedule?.title || latest?.title || 'Scheduled task'}</span>
+        }}>{schedule?.title || latest?.title || t('tasks.scheduledTask')}</span>
         <span style={{
           fontFamily: FONT_MONO, fontSize: 10.5,
           color: 'var(--accent)', letterSpacing: '0.06em',
@@ -300,7 +299,7 @@ function ScheduleGroupRow({
           border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
           flexShrink: 0,
         }}>
-          {runs.length} {runs.length === 1 ? 'run' : 'runs'}
+          {t('tasks.runs', { count: runs.length })}
         </span>
       </div>
 
@@ -315,7 +314,7 @@ function ScheduleGroupRow({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onOpenProject(projectMatch); }}
-              title={`Open ${projectMatch.name}`}
+              title={t('tasks.openProject', { name: projectMatch.name })}
               style={{
                 all: 'unset', cursor: 'pointer',
                 color: 'var(--ink-2)',
@@ -355,8 +354,8 @@ function ScheduleGroupRow({
         <button
           type="button"
           onClick={onOpenLatest}
-          aria-label="Open latest run"
-          title="Open latest run"
+          aria-label={t('tasks.openLatestRun')}
+          title={t('tasks.openLatestRun')}
           className="icon-btn"
           style={{
             width: 26, height: 26, borderRadius: 6,
@@ -392,11 +391,20 @@ export default function TasksView({
   onOpenSchedule,
   onDeleteTask,
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recent');
   const [projectFilter, setProjectFilter] = useState('all');
   const searchRef = useRef(null);
   useCollectionShortcut(searchRef);
+
+  // Sort options are built here (not at module scope) so their labels
+  // flow through i18n.
+  const sortOptions = useMemo(() => [
+    { id: 'recent',  label: t('tasks.sortRecent') },
+    { id: 'name',    label: t('tasks.sortName') },
+    { id: 'project', label: t('tasks.sortProject') },
+  ], [t]);
 
   // First pass: collapse all runs of a single schedule into one
   // synthetic group row. Without this the page reads as a wall of
@@ -479,7 +487,7 @@ export default function TasksView({
       ts(r.updatedAt || r.subtitle) > ts(max?.updatedAt || max?.subtitle) ? r : max,
     row.runs[0]);
     return {
-      title: sched?.title || latest?.title || 'Scheduled task',
+      title: sched?.title || latest?.title || t('tasks.scheduledTask'),
       project: sched?.project || latest?.projectName || latest?.project || ORPHAN_SCHEDULE_PROJECT,
       updatedAt: latest?.updatedAt || latest?.subtitle || sched?.lastRunAt,
     };
@@ -522,7 +530,7 @@ export default function TasksView({
     return set;
   }, [tasks]);
   const projectFilterOptions = useMemo(() => {
-    const opts = [{ id: 'all', label: 'All projects' }];
+    const opts = [{ id: 'all', label: t('tasks.allProjects') }];
     const seen = new Set();
     for (const p of projects) {
       if (!projectsWithTasks.has(p.name) || seen.has(p.name)) continue;
@@ -537,13 +545,13 @@ export default function TasksView({
       opts.push({ id: n, label: n });
     }
     return opts;
-  }, [projects, projectsWithTasks]);
+  }, [projects, projectsWithTasks, t]);
 
   return (
     <div className="scroll-clean" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
-        title="Tasks"
-        subtitle="Every conversation across every project. Sort, filter, and jump straight in."
+        title={t('tasks.title')}
+        subtitle={t('tasks.subtitle')}
       />
 
       {/* Subtitle → search spacer. 32px (was 18) gives the search
@@ -557,25 +565,25 @@ export default function TasksView({
               value={search}
               onChange={setSearch}
               inputRef={searchRef}
-              placeholder="Search tasks"
+              placeholder={t('tasks.searchPlaceholder')}
             />
           }
           sort={
             <>
-              <SortPill value={sort} onChange={setSort} options={SORT_OPTIONS} />
+              <SortPill value={sort} onChange={setSort} options={sortOptions} label={t('tasks.sortLabel')} />
               <SortPill
                 value={projectFilter}
                 onChange={setProjectFilter}
                 options={projectFilterOptions}
-                label="Project"
+                label={t('tasks.projectLabel')}
               />
             </>
           }
           counts={
             <>
               {(search || '').trim().length > 0 || projectFilter !== 'all'
-                ? `Showing ${visible.length} of ${tasks.length}`
-                : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
+                ? t('tasks.showingOf', { total: tasks.length, filtered: visible.length })
+                : t('tasks.count', { count: tasks.length })}
             </>
           }
         />
@@ -623,7 +631,7 @@ export default function TasksView({
               fontFamily: FONT_BODY, fontSize: 13, color: 'var(--ink-4)',
               textAlign: 'center',
             }}>
-              No tasks match these filters.
+              {t('tasks.noMatch')}
             </div>
           )}
         </div>
@@ -633,6 +641,7 @@ export default function TasksView({
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div style={{
       margin: '40px 28px', padding: '40px 28px',
@@ -644,10 +653,10 @@ function EmptyState() {
     }}>
       <span style={{ display: 'inline-flex', color: 'var(--ink-4)' }}>{Ico.chats(28)}</span>
       <div style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>
-        No tasks yet
+        {t('tasks.noTasksYet')}
       </div>
       <div style={{ fontFamily: FONT_BODY, fontSize: 13, color: 'var(--ink-3)', maxWidth: 320 }}>
-        Start a conversation from the home screen — every chat shows up here.
+        {t('tasks.emptyDescription')}
       </div>
     </div>
   );
