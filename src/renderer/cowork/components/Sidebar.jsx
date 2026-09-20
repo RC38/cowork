@@ -322,12 +322,6 @@ export default function Sidebar({
   const RECENT_FOOTER_PAD  = 36;   // reserved for the Show-more row
   const recentsRef = useRef(null);
   const [recentsHeight, setRecentsHeight] = useState(0);
-  // Strict hover state for the Recents heading row only. CSS
-  // `:hover` was bleeding (or appearing to bleed) onto the recents
-  // list below; pinning this to onMouseEnter/onMouseLeave on the
-  // heading div makes the hit area exactly the heading's bounding
-  // box and nothing else.
-  const [recentsHeadingHover, setRecentsHeadingHover] = useState(false);
   useLayoutEffect(() => {
     const el = recentsRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -568,14 +562,9 @@ export default function Sidebar({
         )}
 
         {/* Recents — heading row with a "View all →" link pinned
-            to the right end. Hidden at rest; appears on hover of
-            the *entire* row, including the empty space between
-            "Recents" and the link. CSS-driven hover (on the
-            `recents-heading` class) — using the parent's :hover
-            pseudo-class avoids the inline-mouseenter / pointer-
-            events gap that left the dead space between elements
-            non-receptive. The span flex-grows to fill the row so
-            the heading itself owns the empty space too. */}
+            to the right end. Always visible (no hover gating). The
+            span flex-grows to fill the row so the heading owns the
+            empty space between the label and the link. */}
         <div
           className="section-label recents-heading"
           style={{
@@ -585,8 +574,6 @@ export default function Sidebar({
             cursor: 'default',
             width: '100%',
           }}
-          onMouseEnter={() => setRecentsHeadingHover(true)}
-          onMouseLeave={() => setRecentsHeadingHover(false)}
         >
           <span style={{ flex: 1 }}>{t('sidebar.recentTasks')}</span>
           <button
@@ -595,13 +582,10 @@ export default function Sidebar({
             onClick={() => onNavigate?.('tasks')}
             style={{
               background: 'transparent', border: 0, padding: 0,
-              cursor: recentsHeadingHover ? 'pointer' : 'default',
+              cursor: 'pointer',
               fontFamily: 'var(--font-body)', fontSize: 11,
               letterSpacing: '0.02em',
               textTransform: 'none',
-              opacity: recentsHeadingHover ? 1 : 0,
-              transform: recentsHeadingHover ? 'translateX(0)' : 'translateX(2px)',
-              pointerEvents: recentsHeadingHover ? 'auto' : 'none',
             }}
             title={t('sidebar.viewAll')}
           >
