@@ -339,7 +339,6 @@ a[href],
 .composer-wrap,
 .composer-textarea,
 .modal,
-.search-modal,
 .scroll-clean,
 .field-input,
 .field-textarea,
@@ -3378,29 +3377,6 @@ body[data-theme="dark"] .orbit-morph[data-state="done"] {
   display: flex; justify-content: center; align-items: flex-start;
   padding-top: min(14vh, 120px);
 }
-.search-modal {
-  width: min(620px, calc(100vw - 32px)); max-height: min(680px, calc(100vh - 80px));
-  background: var(--surface-0); border: 1px solid var(--border-01);
-  border-radius: 14px; box-shadow: 0 30px 80px -30px rgba(0,0,0,0.45);
-  overflow: hidden;
-}
-.search-head {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 16px; border-bottom: 1px solid var(--border-0);
-  color: var(--frost-600);
-}
-.search-head input {
-  flex: 1; border: 0; outline: 0; font-size: 15px;
-  color: var(--text-strong); background: transparent;
-}
-/* WCAG 2.4.7 — borderless inputs still need a visible keyboard-focus
-   cue. The parent `.search-head` already has a divider; the focus-
-   within rule promotes that divider's colour so keyboard users can see
-   the active field without the search modal getting noisy for mouse
-   users. */
-.search-head:focus-within {
-  box-shadow: inset 0 -2px 0 0 var(--accent);
-}
 
 /* Generic focus-within ring — apply to any parent that hosts a
    borderless input whose `outline:0` is enforced by inline styles
@@ -3410,39 +3386,6 @@ body[data-theme="dark"] .orbit-morph[data-state="done"] {
 .focus-within-ring:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-.search-results {
-  max-height: 560px; overflow: auto; padding: 8px;
-}
-.search-result {
-  width: 100%; display: flex; align-items: center; gap: 10px;
-  padding: 10px; border: 0; border-radius: 8px;
-  background: transparent; text-align: left;
-}
-.search-result:hover { background: var(--stone-100); }
-.search-result-icon {
-  width: 30px; height: 30px; border-radius: 8px;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--stone-100); color: var(--frost-700); flex: 0 0 auto;
-}
-.search-result-body {
-  display: flex; flex-direction: column; min-width: 0; flex: 1;
-}
-.search-result-body strong {
-  font-size: 13.5px; color: var(--text-strong);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.search-result-body small {
-  font-size: 11.5px; color: var(--frost-600);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.search-result-type {
-  font-size: 10.5px; color: var(--frost-600);
-  background: var(--stone-150); border-radius: 999px; padding: 2px 7px;
-  text-transform: capitalize;
-}
-.search-empty {
-  padding: 18px 12px; color: var(--frost-600); font-size: 13px;
 }
 .task-body {
   flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 280px;

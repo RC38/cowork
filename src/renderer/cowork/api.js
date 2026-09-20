@@ -1565,12 +1565,7 @@ export async function moveAttachmentToProject(projectName, sessionId, attachment
   );
 }
 
-// ─── Search, Pins, Schedules ───────────────────────────────────────────────
-export async function searchCowork(query) {
-  if (!query.trim()) return { results: [] };
-  return req(`/search?q=${encodeURIComponent(query)}`);
-}
-
+// ─── Pins, Schedules ────────────────────────────────────────────────────────
 export async function fetchPins() {
   try {
     return await req('/pins');

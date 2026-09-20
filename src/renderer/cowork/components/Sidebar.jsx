@@ -5,7 +5,6 @@ import { TaskMenu } from './TaskMenu';
 import RecentsModal from './RecentsModal';
 import { host } from '../../platform/host';
 import { useTranslation } from 'react-i18next';
-import { MomoLogo } from './MomoLogo';
 
 // Platform-aware modifier symbol for keyboard hints. Mac uses ⌘ glyph,
 // Windows/Linux use Ctrl+ literal.
@@ -192,7 +191,6 @@ export default function Sidebar({
   onNavigate,
   onSelectTask,
   onNewTask,
-  onOpenSearch,
   collapsed = false,
   onToggleCollapsed,
   onPinTask,
@@ -400,7 +398,7 @@ export default function Sidebar({
         overflow: 'hidden',
       }}
     >
-      {/* Top chrome row: traffic-light pad + collapse/search + ANTON wordmark.
+      {/* Top chrome row: traffic-light pad + collapse toggle + brand wordmark.
           padding-top reduced from 14 → 9 to bring the buttons + wordmark
           5px upward, so they line up with the macOS traffic lights at
           their new (x:18, y:22) position. */}
@@ -413,11 +411,32 @@ export default function Sidebar({
           flexShrink: 0,
         }}
       >
-        {/* Right-aligned cluster: collapse + search icons, then a
-            middle-dot separator, then the ANTON wordmark. The chrome's
-            existing `justify-content: space-between` pushes the whole
-            cluster against the right edge (the left half is empty space
-            past the traffic-light pad). */}
+        {/* Brand wordmark — identifies this app (風控治理 / VERIAGENT後台).
+            Leads the row, right past the traffic-light pad, the way a brand
+            normally opens a header; actions trail on the right. Same stacked
+            proportions as the return button (two lines @ 11px/500) so both
+            groups read as one set. letterSpacing/textTransform override the
+            .anton-sidebar__wordmark class defaults, which would otherwise
+            widen the Latin line. */}
+        <div
+          className="anton-sidebar__wordmark"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 2,
+            lineHeight: 1.15,
+            letterSpacing: 'normal',
+            textTransform: 'none',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap' }}>風控治理</span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap' }}>VERIAGENT後台</span>
+        </div>
+        {/* Right-aligned action cluster: return-to-dashboard button + the
+            collapse toggle. The chrome's `justify-content: space-between`
+            (plus this spacer) pins it against the right edge. */}
         <div style={{ flex: 1 }} />
         <div className="anton-sidebar__chrome-left" style={{ marginLeft: 'auto', gap: 4 }}>
           {/* Return to the risk-control platform dashboard (Open WebUI on :5173).
@@ -430,81 +449,25 @@ export default function Sidebar({
             }}
             title="回到風控儀表板"
             aria-label="回到風控儀表板"
-            style={{ WebkitAppRegion: 'no-drag' }}
+            style={{ WebkitAppRegion: 'no-drag', width: 'auto', height: 'auto', padding: '4px 7px', flexDirection: 'column', gap: 2, flexShrink: 0 }}
           >
-            {Ico.grid(15)}
+            {Ico.gauge(15)}
+            <span style={{ fontSize: 11, lineHeight: 1.15, fontWeight: 500, whiteSpace: 'nowrap' }}>回到風控儀表板</span>
           </button>
           <div className="anton-sidebar__chrome-buttons">
-            {/* Collapse button — always mounted so the search icon
-                next to it never shifts when the host route changes
-                whether the toggle is allowed or not.
-                  • allowed   (chat task)  → fully visible, clickable
-                  • disallowed (other routes) → fades + scales out +
-                    soft blur, but the layout slot stays put so the
-                    search icon doesn't displace.
-                The transition is gentle and a touch over-eased so
-                the hide reads as deliberate without being theatrical. */}
-            {(() => {
-              const canToggle = typeof onToggleCollapsed === 'function';
-              return (
-                <button
-                  className="icon-btn"
-                  onClick={canToggle ? onToggleCollapsed : undefined}
-                  disabled={!canToggle}
-                  aria-hidden={canToggle ? undefined : 'true'}
-                  tabIndex={canToggle ? undefined : -1}
-                  title={
-                    canToggle
-                      ? `${collapsed ? 'Expand sidebar' : 'Collapse sidebar'}  (${shortcut('B')})`
-                      : undefined
-                  }
-                  aria-label={canToggle ? (collapsed ? 'Expand sidebar' : 'Collapse sidebar') : undefined}
-                  style={{
-                    WebkitAppRegion: 'no-drag',
-                    opacity: canToggle ? 1 : 0,
-                    // Slight scale + tilt + blur on hide so the
-                    // motion is recognisable from the corner of the
-                    // eye but never noisy. Origin pinned to center
-                    // so the slot's geometry stays symmetric.
-                    transform: canToggle
-                      ? 'scale(1) rotate(0deg)'
-                      : 'scale(0.72) rotate(-8deg)',
-                    transformOrigin: 'center',
-                    filter: canToggle ? 'blur(0)' : 'blur(2px)',
-                    pointerEvents: canToggle ? 'auto' : 'none',
-                    cursor: canToggle ? 'pointer' : 'default',
-                    transition:
-                      'opacity 220ms cubic-bezier(0.32, 0.72, 0, 1), ' +
-                      'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), ' +
-                      'filter 220ms cubic-bezier(0.32, 0.72, 0, 1)',
-                  }}
-                >
-                  {collapsed ? Ico.sidebarExpandRight(15) : Ico.sidebarCollapseLeft(15)}
-                </button>
-              );
-            })()}
-            <button
-              className="icon-btn"
-              onClick={onOpenSearch}
-              title={`Search  (${shortcut('K')})`}
-              aria-label="Search"
-              style={{ WebkitAppRegion: 'no-drag' }}
-            >
-              {Ico.search(15)}
-            </button>
-          </div>
-          <div
-            className="anton-sidebar__wordmark"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              marginLeft: 8,
-              lineHeight: 1.2,
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>風控治理</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', letterSpacing: '0.05em' }}>VERIAGENT後台</span>
+            {/* Collapse toggle — rendered only where the host actually allows it;
+                conditional render keeps the row tight on routes without a toggle. */}
+            {typeof onToggleCollapsed === 'function' && (
+              <button
+                className="icon-btn"
+                onClick={onToggleCollapsed}
+                title={`${collapsed ? 'Expand sidebar' : 'Collapse sidebar'}  (${shortcut('B')})`}
+                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                style={{ WebkitAppRegion: 'no-drag' }}
+              >
+                {collapsed ? Ico.sidebarExpandRight(15) : Ico.sidebarCollapseLeft(15)}
+              </button>
+            )}
           </div>
         </div>
       </div>

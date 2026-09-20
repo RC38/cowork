@@ -20,7 +20,6 @@ import ChannelsView from './views/ChannelsView';
 import CustomizeView from './views/CustomizeView';
 import SettingsView from './views/SettingsView';
 import UtilitiesView from './views/UtilitiesView';
-import SearchModal from './components/SearchModal';
 import ConnectorPicker from './components/connector/ConnectorPicker';
 import ServerOfflineHelpModal from './components/ServerOfflineHelpModal';
 import { setForm as setDataVaultForm, getForm as getDataVaultForm, clearForm as clearDataVaultForm, patchForm as patchDataVaultForm, getFormState as getDataVaultFormState } from './components/datavault/formStore';
@@ -34,7 +33,7 @@ import { fetchSessions, fetchSession, fetchProjects, fetchArtifacts, fetchSettin
          createProject, updateSettings, streamNewSession, streamMessage,
          streamDataVaultSubmission,
          allocateConversationId, uploadAttachments,
-         deleteAttachment, searchCowork, fetchPins, pinTask, unpinTask,
+         deleteAttachment, fetchPins, pinTask, unpinTask,
          recordTaskVisit, fetchSchedules, createSchedule, updateSchedule, deleteSchedule,
          pauseSchedule, resumeSchedule, runScheduleNow, fetchDatasources, MOCK_DATA,
          renameConversation, deleteConversation, deleteConversationTurn, moveConversation,
@@ -699,7 +698,6 @@ function AppCore() {
   const [composerAttachments, setComposerAttachments] = useState([]);
   /** Muted vault connections for the next send (all composers); persisted on stream. */
   const [composerDisabledConnections, setComposerDisabledConnections] = useState([]);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [connectorPickerOpen, setConnectorPickerOpen] = useState(false);
   const [serverHelpOpen, setServerHelpOpen] = useState(false);
   // Pending delete confirm — task id whose delete is awaiting user
@@ -1043,7 +1041,7 @@ function AppCore() {
   // without needing to rebind on every navigation.
   const routeRef = useRef('home');
   // Global keyboard shortcuts. Cmd/Ctrl+B toggles the sidebar (chat
-  // only), Cmd/Ctrl+K opens search, Cmd/Ctrl+N starts a new task.
+  // only); Cmd/Ctrl+N starts a new task.
   useEffect(() => {
     const onKey = (e) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -1056,9 +1054,6 @@ function AppCore() {
         if (!sidebarCollapsibleRoutes.has(routeRef.current)) return;
         e.preventDefault();
         setSidebarCollapsed((c) => !c);
-      } else if (key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
       } else if (key === 'n') {
         e.preventDefault();
         // Defined later in the function — access via closure (newTask).
@@ -3114,22 +3109,6 @@ function AppCore() {
     refreshData();
   };
 
-  const handleSearchSelect = (result) => {
-    if (result.type === 'task' || (result.type === 'pin' && result.route === 'task')) {
-      selectTask(result.id);
-    } else if (result.type === 'project') {
-      const project = projects.find((p) => p.name === result.id || p.path === result.id);
-      if (project) setSelectedProject(project);
-      setRoute('projects');
-    } else if (result.type === 'attachment' && result.sessionId) {
-      selectTask(result.sessionId);
-    } else if (result.type === 'schedule') {
-      setRoute('scheduled');
-    } else {
-      setRoute('artifacts');
-    }
-  };
-
   const { showDots, accentVariant } = settings;
   const accentCss = ACCENT_VARS[accentVariant] || {};
   // appStyle + mainBg deliberately transparent so the gravity-field
@@ -3238,7 +3217,6 @@ function AppCore() {
           onNavigate={navigate}
           onSelectTask={selectTask}
           onNewTask={newTask}
-          onOpenSearch={() => setSearchOpen(true)}
           collapsed={sidebarCollapsedEffective}
           onToggleCollapsed={
             isNarrow
@@ -3607,13 +3585,6 @@ function AppCore() {
         </MobileShell>
       ) : mainEl;
       })()}
-      <SearchModal
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSearch={searchCowork}
-        onSelect={handleSearchSelect}
-      />
-
       <ConnectorPicker
         open={connectorPickerOpen}
         onClose={() => setConnectorPickerOpen(false)}
